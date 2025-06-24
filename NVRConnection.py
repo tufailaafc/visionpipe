@@ -1,69 +1,78 @@
 import cv2
 import os
+import datetime
+import threading
 
-# ==== CONFIGURATION ====
-username = "admin"
-password = "bottle123"
-nvr_ip = "192.168.1.5"  # Your NVR IP
-channel = 3              # Camera channel (1, 2, 3, ...)
-subtype = 0              # 0 = Main stream, 1 = Sub stream
 
-# === OUTPUT SETTINGS ===
-video_output_path = "output_video.avi"
-frame_output_dir = "extracted_frames"
-frame_interval = 30  # Save every 30th frame
+def capture_camera(username, password, nvr_ip, channel, subtype=0):
+    video_output_path = f"output_video_channel_{channel}.avi"
+    frame_output_dir = f"extracted_frames/{datetime.date.today()}_extracted_frames_channel_{channel}"
+    frame_interval = 120
 
-# Create frame output directory if it doesn't exist
-os.makedirs(frame_output_dir, exist_ok=True)
+    os.makedirs(frame_output_dir, exist_ok=True)
 
-# Construct RTSP URL
-rtsp_url = f"rtsp://{username}:{password}@{nvr_ip}:554/cam/realmonitor?channel={channel}&subtype={subtype}"
+    rtsp_url = f"rtsp://{username}:{password}@{nvr_ip}:554/cam/realmonitor?channel={channel}&subtype={subtype}"
+    cap = cv2.VideoCapture(rtsp_url)
 
-# Open the RTSP stream
-cap = cv2.VideoCapture(rtsp_url)
+    frame_width = int(cap.get(3))
+    frame_height = int(cap.get(4))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    if fps <= 0:
+        fps = 15
 
-# Get frame width and height
-frame_width = int(cap.get(3))
-frame_height = int(cap.get(4))
-fps = cap.get(cv2.CAP_PROP_FPS)
-if fps <= 0:
-    fps = 15  # Fallback
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    video_writer = cv2.VideoWriter(video_output_path, fourcc, fps, (frame_width, frame_height))
 
-# Define the codec and create VideoWriter object
-fourcc = cv2.VideoWriter_fourcc(*'XVID')
-video_writer = cv2.VideoWriter(video_output_path, fourcc, fps, (frame_width, frame_height))
+    frame_count = 0
 
-frame_count = 0
+    if not cap.isOpened():
+        print(f"❌ Failed to open RTSP stream for channel {channel}.")
+        return
+    else:
+        print(f"✅ RTSP stream opened for channel {channel}.")
 
-if not cap.isOpened():
-    print("❌ Failed to open RTSP stream.")
-else:
-    print("✅ RTSP stream opened. Press 'q' to quit.")
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            print(f"⚠️ Stream ended or frame read failed for channel {channel}.")
+            break
 
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        print("⚠️ Stream ended or frame read failed.")
-        break
+        # Save video frame
+        video_writer.write(frame)
 
-    cv2.imshow('Lorex Camera Stream', frame)
-    video_writer.write(frame)
+        # Save every nth frame
+        if frame_count % frame_interval == 0:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}.jpg")
+            cv2.imwrite(frame_filename, frame)
 
-    # Save every nth frame
-    if frame_count % frame_interval == 0:
-        frame_filename = os.path.join(frame_output_dir, f"frame_{frame_count}.jpg")
-        cv2.imwrite(frame_filename, frame)
+        frame_count += 1
 
-    frame_count += 1
+        # Optional: Show frame window per camera 
+        # cv2.imshow(f'Camera {channel} Stream', frame)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
 
-    # Exit on pressing 'q'
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    cap.release()
+    video_writer.release()
+    # cv2.destroyAllWindows()
 
-# Cleanup
-cap.release()
-video_writer.release()
-cv2.destroyAllWindows()
+    print(f"✅ Finished camera channel {channel}. Video saved to: {video_output_path}")
 
-print(f"✅ Finished. Video saved to: {video_output_path}")
-print(f"✅ Frames saved in: {frame_output_dir}")
+if __name__ == "__main__":
+    username = "admin"
+    password = "bottle123"
+    nvr_ip = "192.168.0.2"
+
+    channels = [3] 
+    threads = []
+
+# for every channel create a thread
+    for ch in channels:
+        t = threading.Thread(target=capture_camera, args=(username, password, nvr_ip, ch))
+        t.start()
+        threads.append(t)
+
+    # Wait for all threads to finish
+    for t in threads:
+        t.join()
