@@ -1,0 +1,69 @@
+services:
+  #Our primairy database for storing images, videos and data from sensors 
+  mongo:
+    image: mongo
+    container_name: MeatGradeMongo
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}  # Ensure these are set in .env file
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+     - ../data/mongo-data:/data/db #A bind mount so that the data is stored beside docker-compose.yml
+    env_file: .env
+    restart: unless-stopped
+
+  # The frontend for users to interact with our system
+  pig_sorting_streamlit:
+    build:
+      context: ./pig_sorting_streamlit
+      dockerfile: Dockerfile
+    # network_mode: "host"  # Use host networking for local development
+    depends_on:
+      - pig_sorting_api  # Ensures the API is up before Streamlit starts
+    ports:
+      - "8501:8501"
+    restart: unless-stopped
+
+  # The backend that will handle sending and reciving data from the database for the frontend(pig_sorting_streamlit).
+  pig_sorting_api:
+    build:
+      context: ./pig_sorting_api
+      dockerfile: Dockerfile
+    # network_mode: "host"  # Use host networking for local development
+    ports:
+      - "8001:8001"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}  # Ensure these are set in your .env file
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - ~/tufail_data/meat-evaluation-project/images:/app/images  # Mount image folder where we store all images
+      - ./pig_sorting_api/packages:/app/packages # Mount folder to download packages to so they persist across builds
+    restart: unless-stopped
+
+  # For data annotation.
+  label-studio:
+    image: heartexlabs/label-studio:latest
+    container_name: label-studio
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../data/label-studio-data:/label-studio/data
+    environment:
+      - LABEL_STUDIO_USERNAME=${LABEL_STUDIO_USERNAME}
+      - LABEL_STUDIO_PASSWORD=${LABEL_STUDIO_PASSWORD}
+    restart: unless-stopped
+
+  #Primairy point for data ingestion, specifically for images, videos and sensor data
+  data_intake:
+    build:
+      context: ./data_intake
+      dockerfile: Dockerfile
+    # network_mode: "host"  # Use host networking for local development
+    ports:
+      - "8301:8301" # port is undecided so far will implement later ##########################
+    restart: unless-stopped
+
+
+volumes:
+  mongo-data:  # Named volume for MongoDB data
