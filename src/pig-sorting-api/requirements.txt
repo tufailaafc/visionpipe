@@ -5,3 +5,5 @@ pymongo
 numpy
 opencv-python
 dotenv
+pillow
+python-multipart
