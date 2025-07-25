@@ -2,7 +2,7 @@ services:
   #Our primairy database for storing images, videos and data from sensors 
   mongo:
     image: mongo
-    container_name: MeatGradeMongo
+    container_name: PigEvalMongo
     ports:
       - "27017:27017"
     environment:
@@ -14,13 +14,13 @@ services:
     restart: unless-stopped
 
   # The frontend for users to interact with our system
-  pig_sorting_streamlit:
+  pig-sorting-streamlit:
     build:
-      context: ./pig_sorting_streamlit
+      context: ./pig-sorting-streamlit
       dockerfile: Dockerfile
     # network_mode: "host"  # Use host networking for local development
     depends_on:
-      - pig_sorting_api  # Ensures the API is up before Streamlit starts
+      - pig-sorting-api  # Ensures the API is up before Streamlit starts
     ports:
       - "8501:8501"
     restart: unless-stopped
