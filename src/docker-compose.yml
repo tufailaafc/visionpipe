@@ -26,9 +26,9 @@ services:
     restart: unless-stopped
 
   # The backend that will handle sending and reciving data from the database for the frontend(pig_sorting_streamlit).
-  pig_sorting_api:
+  pig-sorting-api:
     build:
-      context: ./pig_sorting_api
+      context: ./pig-sorting-api
       dockerfile: Dockerfile
     # network_mode: "host"  # Use host networking for local development
     ports:
@@ -37,8 +37,8 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}  # Ensure these are set in your .env file
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
-      - ~/tufail_data/meat-evaluation-project/images:/app/images  # Mount image folder where we store all images
-      - ./pig_sorting_api/packages:/app/packages # Mount folder to download packages to so they persist across builds
+      - ../data/images:/app/images  # Mount image folder where we store all images
+      - ./pig-sorting-api/packages:/app/packages # Mount folder to download packages to so they persist across builds
     restart: unless-stopped
 
   # For data annotation.
@@ -55,15 +55,12 @@ services:
     restart: unless-stopped
 
   #Primairy point for data ingestion, specifically for images, videos and sensor data
-  data_intake:
+  data-intake:
     build:
-      context: ./data_intake
+      context: ./data-intake
       dockerfile: Dockerfile
     # network_mode: "host"  # Use host networking for local development
     ports:
       - "8301:8301" # port is undecided so far will implement later ##########################
     restart: unless-stopped
 
-
-volumes:
-  mongo-data:  # Named volume for MongoDB data
