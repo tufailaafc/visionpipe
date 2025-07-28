@@ -5,3 +5,5 @@ pillow==11.2.1
 pymongo==4.13.2
 setuptools==78.1.1
 wheel==0.45.1
+zeep >= 3.0.0
+onvif_zeep

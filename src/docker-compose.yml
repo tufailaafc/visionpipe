@@ -62,5 +62,12 @@ services:
     # network_mode: "host"  # Use host networking for local development
     ports:
       - "8301:8301" # port is undecided so far will implement later ##########################
+    environment:
+      - NVR_USERNAME=${NVR_USERNAME}
+      - NVR_PASSWORD=${NVR_PASSWORD}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ../data/images:/app/images
+      - ../data/videos:/app/videos
     restart: unless-stopped
 

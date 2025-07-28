@@ -4,5 +4,6 @@ data/label-studio-data
 data/mongo-data
 data/processed
 data/raw
+data/videos
 src/.env
 .env

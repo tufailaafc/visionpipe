@@ -8,6 +8,16 @@ The data-intake container's purpose is to ingest data from sensors and the nvr.
 It then does some level of processing like ensuring that all of the meta data is correct.
 It will then store the meta data in the MongoDB and the images and videos in data/images and data/videos.
 
+### Troubleshooting 
+wsse error: If you have an error that has someting to do with the wsse times not being correct then you should:
+Ensure you are on the same network and as the NVR and enter the ip into your browser.
+Then login with the NVR credentials.
+Select System.
+Select Date&Time
+Make sure the timzone is correct.
+Select Sync PC.
+Then click apply.
+
 ## data-processor (Not yet implemented)
 
 ## deployment (Not yet implemented)
