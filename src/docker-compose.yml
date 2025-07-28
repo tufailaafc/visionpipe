@@ -65,6 +65,8 @@ services:
     environment:
       - NVR_USERNAME=${NVR_USERNAME}
       - NVR_PASSWORD=${NVR_PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ../data/images:/app/images

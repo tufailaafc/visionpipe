@@ -14,6 +14,7 @@ import logging
 
 # Custom class that contains EXIF manipulation functions
 import utils
+from Client import image_table
 
 
 
@@ -137,7 +138,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
 
 
     # These are the ouptut directories for each channel/camera
-    video_output_path = f"videos/output_video_channel_{channel}.avi"
+    video_output_path = f"videos/{datetime.date.today()}_output_video_channel_{channel}.avi"
     frame_output_dir = f"images/extracted_frames/{datetime.date.today()}_extracted_frames_channel_{channel}"
     frame_interval = 120 # This is how often we take a picture, if set to 60 on a 30 fps camera, it will be 
     # about every two seconds.
@@ -191,7 +192,6 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
         ret, frame = cap.read()
         if not ret:
             logger.error(f"Frame read failed for channel {channel}. Attempting to reconnect...")
-            #print(f"⚠️ Frame read failed for channel {channel}. Attempting to reconnect...")
             cap.release()
             time.sleep(3)  # wait before reconnecting
             cap = cv2.VideoCapture(rtsp_url)
@@ -212,7 +212,12 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}.jpg")
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
+
+            SavePictureData(frame_filename, channel,"",str(timestamp),"Tests","ceiling")
             manual_capture_flags[channel].clear()
+
+            # Clear frame count so that it will not overflow eventually
+            frame_count = 0
 
         frame_count += 1
 
@@ -227,6 +232,23 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     # cv2.destroyAllWindows()
     logger.info(f"Finished camera channel {channel}. Video saved to: {video_output_path}")
 
+def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description):
+    results={}
+    
+    #Add the meta data to the image themselves
+    utils.writeExifTag(image_path, author, serialNumber, dateTime, userComment, description)
+    results["image_path"]=image_path
+    results["author"]=author
+    results["serial_number"]=serialNumber
+    results["dateTime"]=dateTime
+    results["userComment"]=userComment
+    results["description"]=description
+
+
+    #Insert metadata into the MongoDB
+    resp = image_table.insert_one(results)
+    logger.info(f"Inserted into MongoDb: {results}, \n Response: {resp}")
+
 
 
 
@@ -237,7 +259,7 @@ if __name__ == "__main__":
     password = os.getenv("NVR_PASSWORD")
 
     if not username or not password:
-        raise ValueError("❌ NVR_USERNAME and NVR_PASSWORD environment variables must be set.")
+        raise ValueError("NVR_USERNAME and NVR_PASSWORD environment variables must be set.")
 
     nvr_ip = "192.168.1.5"
 
