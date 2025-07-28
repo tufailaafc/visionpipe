@@ -12,12 +12,18 @@ from zeep import Client
 from requests.exceptions import RequestException
 import logging
 
+# Custom class that contains EXIF manipulation functions
+import utils
+
 
 
 
 #Try to connect to the NVR
 MAX_RETRIES = 5
 RETRY_DELAY = 5  # seconds
+
+manual_capture_flags = {}
+take_picture = False #A flag that we can switch to take a picture if we get an input from the website etc
 
 def is_reachable(ip, port=80, timeout=2):
     try:
@@ -43,8 +49,7 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
 
     logger.debug(f"UTC time:       {utc_now.isoformat()}")
     logger.debug(f"Local datetime: {local_now.isoformat()}")
-    # print(f"UTC time:       {utc_now.isoformat()}")
-    # print(f"Local datetime: {local_now.isoformat()}")
+
 
 
 
@@ -58,25 +63,21 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
 
         try:
             logger.info(f"Connecting to NVR ONVIF cameras at {nvr_ip}...")
-            #print(f"🔗 Connecting to ONVIF camera at {nvr_ip}...")
+
             camera = ONVIFCamera(nvr_ip, 80, username, password)
             device_service = camera.create_devicemgmt_service()
 
             device_time = device_service.GetSystemDateAndTime()
             logger.info(f"Camera Time: {device_time}")
-            #print(f"🕒 Camera Time: {device_time}")
+
 
             device_info = device_service.GetDeviceInformation()
             logger.info("Manufacturer: %s", device_info.Manufacturer)
-            #print("🔧 Manufacturer:", device_info.Manufacturer)
             logger.info("Model: %s", device_info.Model)
-            #print("📷 Model:", device_info.Model)
             logger.info("Firmware: %s", device_info.FirmwareVersion)
-            #print("🧠 Firmware:", device_info.FirmwareVersion)
             logger.info("Serial Number: %s", device_info.SerialNumber)
-            #print("🆔 Serial Number:", device_info.SerialNumber)
             logger.info("Hardware ID: %s", device_info.HardwareId)
-            #print("📦 Hardware ID:", device_info.HardwareId)
+
 
             device_outputs = device_service.GetCapabilities({'Category': 'All'})
 
@@ -87,17 +88,15 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
 
         except (socket.error, Fault, RequestException) as e:
             logger.error(f"Error connecting to ONVIF device: {e}")
-            #print(f"❌ Error connecting to ONVIF device: {e}")
             retries += 1
             time.sleep(RETRY_DELAY)
     logger.error("Failed to retrieve camera info after multiple attempts.")
-    #print("🚫 Failed to retrieve camera info after multiple attempts.")
+
 
 
 def getCameraChannels(username: str, password: str, nvr_ip: str):
     try:
         logger.info(f"Connecting to NVR ONVIF cameras at {nvr_ip}...")
-        #print(f"🔗 Connecting to ONVIF camera at {nvr_ip}...")
         camera = ONVIFCamera(nvr_ip, 80, username, password)
         media_service = camera.create_media_service()
 
@@ -110,9 +109,9 @@ def getCameraChannels(username: str, password: str, nvr_ip: str):
             name = str(profile.Name)
 
             # Example Name "MediaProfile_Channel1_MainStream"
-            #get the number component from the returned string to help dynamically initialize connection with the cameras
+            # get the number component from the returned string to help dynamically initialize connection with the cameras
             name_components = name.split("_")
-            #grab the center part
+            # grab the center part
             channel_component = name_components[1]
             # grab the number
             channel_number = channel_component[7:]
@@ -124,7 +123,6 @@ def getCameraChannels(username: str, password: str, nvr_ip: str):
 
     except (socket.error, Fault, RequestException) as e:
             logger.error(f"Error connecting to ONVIF device: {e}")
-            #print(f"❌ Error connecting to ONVIF device: {e}")
             retries += 1
             time.sleep(RETRY_DELAY)
 
@@ -134,6 +132,9 @@ stop_event = threading.Event()
 
 
 def capture_camera(username, password, nvr_ip, channel, subtype=0):
+    # This is so that we can tell one camera to take a picture.
+    global manual_capture_flags
+
 
     # These are the ouptut directories for each channel/camera
     video_output_path = f"videos/output_video_channel_{channel}.avi"
@@ -172,11 +173,11 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     # verify that the stream is open
     if not cap.isOpened():
         logger.error(f"Failed to open RTSP stream for channel {channel}.")
-        #print(f"❌ Failed to open RTSP stream for channel {channel}.")
+
         return
     else:
-        logger.info(f"✅ RTSP stream opened for channel {channel}.")
-        #print(f"✅ RTSP stream opened for channel {channel}.")
+        logger.info(f"RTSP stream opened for channel {channel}.")
+
 
 
 
@@ -185,13 +186,9 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
 
         if stop_event.is_set():
                     logger.info(f"Stop signal received. Stopping capture on channel {channel}.")
-                    #print(f"🛑 Stop signal received. Stopping capture on channel {channel}.")
                     break
 
         ret, frame = cap.read()
-        # if not ret:
-        #     print(f"⚠️ Stream ended or frame read failed for channel {channel}.")
-        #     break
         if not ret:
             logger.error(f"Frame read failed for channel {channel}. Attempting to reconnect...")
             #print(f"⚠️ Frame read failed for channel {channel}. Attempting to reconnect...")
@@ -200,7 +197,6 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
             cap = cv2.VideoCapture(rtsp_url)
             if not cap.isOpened():
                 logger.error(f"Reconnection failed. Exiting channel {channel}.")
-                #print(f"❌ Reconnection failed. Exiting channel {channel}.")
                 break
             continue
 
@@ -208,11 +204,15 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
         video_writer.write(frame)
 
         # Save every nth frame
-        if frame_count % frame_interval == 0:
+        if frame_count % frame_interval == 0 or manual_capture_flags[channel].is_set():
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}.jpg")
+            if manual_capture_flags[channel].is_set():
+                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}_manual.jpg")
+            else:
+                frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}.jpg")
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
+            manual_capture_flags[channel].clear()
 
         frame_count += 1
 
@@ -226,25 +226,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     video_writer.release()
     # cv2.destroyAllWindows()
     logger.info(f"Finished camera channel {channel}. Video saved to: {video_output_path}")
-    #print(f"✅ Finished camera channel {channel}. Video saved to: {video_output_path}")
 
-
-# def onvifCameraInfo(username :str,password:str,nvr_ip:str):
-#     # Connect to the camera
-#     camera = ONVIFCamera(nvr_ip, 80, username, password)
-
-#     # Create device management service
-#     device_service = camera.create_devicemgmt_service()
-#     device_time = device_service.GetSystemDateAndTime()
-#     print(device_time)
-
-#     # Get device information
-#     device_info = device_service.GetDeviceInformation()
-#     print("Manufacturer:", device_info.Manufacturer)
-#     print("Model:", device_info.Model)
-#     print("FirmwareVersion:", device_info.FirmwareVersion)
-#     print("SerialNumber:", device_info.SerialNumber)
-#     print("HardwareId:", device_info.HardwareId)
 
 
 
@@ -264,6 +246,9 @@ if __name__ == "__main__":
 
     #channels = [1,3] # give all of the channels you would like to connect to.
     channels = getCameraChannels(username,password,nvr_ip)
+
+    # Creating a flag for every channel to manually take pictures
+    manual_capture_flags = {ch: threading.Event() for ch in channels}
     threads = []
     try:
     # for every channel create a thread
@@ -273,7 +258,6 @@ if __name__ == "__main__":
             threads.append(t)
     except KeyboardInterrupt:
             logger.info("\nKeyboardInterrupt received, stopping threads...")
-            #print("\n⚠️ KeyboardInterrupt received, stopping threads...")
             stop_event.set()  # Signal threads to stop
     # Wait for all threads to finish
     for t in threads:
