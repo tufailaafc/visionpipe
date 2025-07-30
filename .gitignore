@@ -7,3 +7,4 @@ data/raw
 data/videos
 src/.env
 .env
+src/pig-sorting-streamlit/.streamlit/secrets.toml
