@@ -24,7 +24,7 @@ MAX_RETRIES = 5
 RETRY_DELAY = 5  # seconds
 
 manual_capture_flags = {}
-take_picture = False #A flag that we can switch to take a picture if we get an input from the website etc
+#take_picture = False #A flag that we can switch to take a picture if we get an input from the website etc
 
 def is_reachable(ip, port=80, timeout=2):
     try:
@@ -234,24 +234,24 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
 
 # This will both write the data to the exif tag and save it to the mongoDB
 def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description):
-    results={}
+    images={}
     
     #Add the meta data to the image themselves
     utils.writeExifTag(image_path, author, serialNumber, dateTime, userComment, description)
 
 
     # Create a json dict to store data into the mongoDB
-    results["image_path"]=image_path
-    results["author"]=author
-    results["serial_number"]=serialNumber
-    results["dateTime"]=dateTime
-    results["userComment"]=userComment
-    results["description"]=description
+    images["image_path"]=image_path
+    images["author"]=author
+    images["serial_number"]=serialNumber
+    images["dateTime"]=dateTime
+    images["userComment"]=userComment
+    images["description"]=description
 
 
     #Insert metadata into the MongoDB
-    resp = image_table.insert_one(results)
-    logger.info(f"Inserted into MongoDb: {results}, \n Response: {resp}")
+    resp = image_table.insert_one(images)
+    logger.info(f"Inserted into MongoDb: {images}, \n Response: {resp}")
 
 
 
