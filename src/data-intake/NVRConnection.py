@@ -124,7 +124,7 @@ def getCameraChannels(username: str, password: str, nvr_ip: str):
 
     except (socket.error, Fault, RequestException) as e:
             logger.error(f"Error connecting to ONVIF device: {e}")
-            retries += 1
+            #retries += 1
             time.sleep(RETRY_DELAY)
 
 
@@ -140,7 +140,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     # These are the ouptut directories for each channel/camera
     video_output_path = f"videos/{datetime.date.today()}_output_video_channel_{channel}.avi"
     frame_output_dir = f"images/extracted_frames/{datetime.date.today()}_extracted_frames_channel_{channel}"
-    frame_interval = 120 # This is how often we take a picture, if set to 60 on a 30 fps camera, it will be 
+    frame_interval = 960 # This is how often we take a picture, if set to 60 on a 30 fps camera, it will be 
     # about every two seconds.
 
     os.makedirs(frame_output_dir, exist_ok=True)
@@ -205,7 +205,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
 
         # Save every nth frame
         if frame_count % frame_interval == 0 or manual_capture_flags[channel].is_set():
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
             if manual_capture_flags[channel].is_set():
                  frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}_manual.jpg")
             else:
@@ -232,11 +232,15 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     # cv2.destroyAllWindows()
     logger.info(f"Finished camera channel {channel}. Video saved to: {video_output_path}")
 
+# This will both write the data to the exif tag and save it to the mongoDB
 def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description):
     results={}
     
     #Add the meta data to the image themselves
     utils.writeExifTag(image_path, author, serialNumber, dateTime, userComment, description)
+
+
+    # Create a json dict to store data into the mongoDB
     results["image_path"]=image_path
     results["author"]=author
     results["serial_number"]=serialNumber
