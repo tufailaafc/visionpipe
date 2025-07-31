@@ -1,6 +1,7 @@
 import cv2
 import os
 import datetime
+#from datetime import datetime
 import threading
 from onvif import ONVIFCamera
 
@@ -11,6 +12,8 @@ from zeep.exceptions import Fault
 from zeep import Client
 from requests.exceptions import RequestException
 import logging
+from pydantic import BaseModel
+
 
 # Custom class that contains EXIF manipulation functions
 import utils
@@ -25,6 +28,19 @@ RETRY_DELAY = 5  # seconds
 
 manual_capture_flags = {}
 #take_picture = False #A flag that we can switch to take a picture if we get an input from the website etc
+
+
+class ImageMetadata(BaseModel):
+    image_path: str
+    author: str
+    serial_number: str = None
+    date_time: datetime.datetime
+    user_comment: str = None
+    description: str = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
 
 def is_reachable(ip, port=80, timeout=2):
     try:
@@ -63,8 +79,9 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
             continue
 
         try:
+            
             logger.info(f"Connecting to NVR ONVIF cameras at {nvr_ip}...")
-
+            # Creating management services to get details from the NVR.
             camera = ONVIFCamera(nvr_ip, 80, username, password)
             device_service = camera.create_devicemgmt_service()
 
@@ -234,24 +251,35 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
 
 # This will both write the data to the exif tag and save it to the mongoDB
 def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description):
-    images={}
+    #images=ImageMetadata
     
     #Add the meta data to the image themselves
     utils.writeExifTag(image_path, author, serialNumber, dateTime, userComment, description)
 
 
-    # Create a json dict to store data into the mongoDB
-    images["image_path"]=image_path
-    images["author"]=author
-    images["serial_number"]=serialNumber
-    images["dateTime"]=dateTime
-    images["userComment"]=userComment
-    images["description"]=description
+     # Convert dateTime string to datetime object (e.g. "2025:07:30 14:41:04") to make querying easier
+    try:
+        dt_obj = datetime.datetime.strptime(dateTime, "%Y:%m:%d %H:%M:%S")
+    except ValueError as e:
+        logger.error(f"Invalid dateTime format: {dateTime}, Error: {e}")
+        dt_obj = None
+
+    # Using pydantic model to ensure data consistency
+    metadata = ImageMetadata(
+        image_path=image_path,
+        author=author,
+        serial_number=serialNumber,
+        date_time=dt_obj,
+        user_comment=userComment,
+        description=description
+    )
+
+    # Insert into MongoDB (convert to dict)
+    resp = image_table.insert_one(metadata.dict())
+    logger.info(f"Inserted into MongoDb: {metadata.dict()}, \n Response: {resp}")
 
 
-    #Insert metadata into the MongoDB
-    resp = image_table.insert_one(images)
-    logger.info(f"Inserted into MongoDb: {images}, \n Response: {resp}")
+
 
 
 
