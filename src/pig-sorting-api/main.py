@@ -1,6 +1,8 @@
 from fastapi import FastAPI, File, UploadFile, Query
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Body
+from typing import List
 from pydantic import BaseModel
 #from ultralytics import YOLO
 from PIL import Image
@@ -21,6 +23,16 @@ import logging
 import json
 
 
+# Set to the log level desired, also may stop fastapi from suppressing the logs.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+
+# Set this to uvicorn.info so that the logs will propagate
+logger = logging.getLogger('uvicorn.info')
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -31,7 +43,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logger = logging.getLogger()
+
+
+
+
+
+
+
+
+# A custom class to ensure we get the input as expected.
+class TimesRequest(BaseModel):
+    times: List[str]
+
+
 
 
 def image_to_base64(img: np.ndarray) -> str:
@@ -45,9 +69,12 @@ def image_to_base64(img: np.ndarray) -> str:
     return base64.b64encode(buffer).decode()
 
 
+
+# Will send all of the records to the user
 @app.get("/api/v1/mongoData", response_class=JSONResponse)
 async def get_mongo_data():
     try:
+        logger.debug("🔍 /api/v1/mongoData/ endpoint hit")
         db_result = db["metaData"]
         result = db_result.find()
 
@@ -60,10 +87,48 @@ async def get_mongo_data():
             
 
     except Exception as e:
-        logger.info(f"Error getting data :{e}")
+        logger.error(f"Error getting data :{e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+# Will send all of the images selected between certain times
+@app.post("/api/v1/images/", response_class=JSONResponse)
+async def get_images_by_date(request: TimesRequest):
+    logger.debug("🔍 /api/v1/images/ endpoint hit")
+    try:
+        # Get the data into a  form that will help us query the database
+        times = request.times
+        logger.debug(f"time 1: {times[0]}, time 2: {times[0]}")
+        start_date = datetime.fromisoformat(times[0])
+        end_date = datetime.fromisoformat(times[1])
+
+        # get all records within the provided timeframe
+        db_result = db["metaData"].find({
+            "date_time": {
+                "$gte": start_date,
+                "$lte": end_date
+            }
+        })
+
+        # Iterate through all records and store them in a list
+        images_base64 = []
+        for doc in db_result:
+            path = doc.get("image_path")
+            if path and os.path.exists(path):
+                with open(path, "rb") as img_file:
+                    b64_str = base64.b64encode(img_file.read()).decode()
+                    images_base64.append({
+                        "filename": os.path.basename(path),
+                        "image": b64_str,
+                        "timestamp": doc.get("date_time").isoformat()
+                    })
+
+
+        return images_base64
+
+    except Exception as e:
+        logger.error(f"Error fetching images by date: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # @app.post("/api/v1/predict/", response_class=JSONResponse)
