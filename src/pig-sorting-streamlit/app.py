@@ -12,14 +12,7 @@ uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png", "jpeg"])
 
 
 
-def DataBasePage():
-    st.title("Test 2")
 
-# pg = st.navigation([
-#     st.Page("DataBaseView/DataBaseView.py", title="test 3")
-# ])
-
-# pg.run()
 
 
 if uploaded_file is not None:
