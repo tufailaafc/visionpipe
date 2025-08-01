@@ -26,6 +26,18 @@ This module will likely handle any deployment configuration when sending things 
 ## LabelStudio (Not fully implemented)
 We are using this as our primary annotation software. It will take the data from our MongoDB and then output the annotations to data/label-studio-data right now. The interface can be accessed at localhost:8080
 
+When mounting any folder you will need to change the ownership to 1001.
+There are currently two folders which this should be run on.
+
+```bash
+sudo chown 1001 /data/label-studio-data
+```
+
+```bash
+sudo chown 1001 processed
+```
+
+
 ## model-deploy (Not yet implemented)
 This will handle deploying the already trained models to wherever we need them.
 
@@ -66,4 +78,6 @@ After that run
 ```bash
 sudo docker compose up --build
 ```
+
+May also require the user to allow legacy tokens to allow exporting with images.
 

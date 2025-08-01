@@ -229,6 +229,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}.jpg")
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
+            os.chmod(frame_filename, 0o777) #Grants read and write to all users to ensure that label studio can access them
 
             SavePictureData(frame_filename, channel,"",str(timestamp),"Tests","ceiling")
             manual_capture_flags[channel].clear()

@@ -48,10 +48,14 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ../data/label-studio-data:/label-studio/data
+      - ../data/label-studio-data:/label-studio/data #contains the things from label studio
+      - ../data:/label-studio/files # This will hold all outside data like images
     environment:
       - LABEL_STUDIO_USERNAME=${LABEL_STUDIO_USERNAME}
       - LABEL_STUDIO_PASSWORD=${LABEL_STUDIO_PASSWORD}
+      - LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true
+      - LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=/label-studio/files
+      - LABEL_STUDIO_ALLOW_LOCAL_FILES_ACCESS=true # To allow exporting the images
     restart: unless-stopped
 
   #Primairy point for data ingestion, specifically for images, videos and sensor data
