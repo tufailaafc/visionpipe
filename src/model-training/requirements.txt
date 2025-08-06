@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+
+# Required for Ultralytics
+pynvml
+nvidia-ml-py

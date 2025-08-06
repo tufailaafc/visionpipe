@@ -77,3 +77,30 @@ services:
       - ../data/videos:/app/videos
     restart: unless-stopped
 
+  model-training:
+    build:
+      context: ./model-training
+      dockerfile: Dockerfile
+    shm_size: '6gb' # needed to ensure enough space for training.
+    ports:
+      - "8401:8401" 
+    runtime: nvidia # In order to support gpu for training
+    # network_mode: "host"  # Use host networking for local development
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ../data/processed:/app/processed
+      - ../models:/app/models
+    restart: unless-stopped
+
+  

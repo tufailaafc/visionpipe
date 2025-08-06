@@ -9,3 +9,5 @@ src/.env
 .env
 src/pig-sorting-streamlit/.streamlit/secrets.toml
 src/pig-sorting-api/packages
+models
+src/model-training/packages

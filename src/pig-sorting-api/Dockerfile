@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -11,20 +11,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only the requirements file first (to leverage Docker's cache effectively)
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir --default-timeout=100 --retries=10 -r requirements.txt && pip freeze
+# COPY requirements.txt /app/
+# RUN pip install --no-cache-dir --default-timeout=100 --retries=10 -r requirements.txt && pip freeze
 
 ################################## If this becomes large for dependencies uncomment to save bandwidth
 # # has a lot of the pip dependencies already downloaded to save on bandwidth and time
-# COPY ./packages /app/packages 
+COPY ./packages /app/packages 
 
-# COPY requirements.txt /app/
+COPY requirements.txt /app/
 
-# # Download any missing packages from PyPI into /app/packages
-# #RUN pip download -r requirements.txt --dest=/app/packages
+# Download any missing packages from PyPI into /app/packages
+#RUN pip download -r requirements.txt --dest=/app/packages
 
-# #Use the already downloaded dependencies first.
-# RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verbose 
+#Use the already downloaded dependencies first.
+RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verbose 
 
 
 

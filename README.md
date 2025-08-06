@@ -1,6 +1,15 @@
 # Purpose
 This is a project that aims to help manage, train models and annotate images.
 
+## Default ports
+mongo(database) = 27017
+pig-sorting-streamlit(frontend) = 8501
+pig-sorting-api(backend) = 8001
+LabelStudio(annotation) = 8080
+data-intake(data ingestion) = 8301
+model-training = 8401
+
+
 
 # What it does, break down of components
 ## data-intake (Not fully implemented)
@@ -41,8 +50,24 @@ sudo chown 1001 processed
 ## model-deploy (Not yet implemented)
 This will handle deploying the already trained models to wherever we need them.
 
-## model-training (Not yet implemented)
-This will handle the training and evaluation of the models
+## model-training (Not fully implemented)
+This will handle the training and evaluation of the models.
+
+What it requires: 
+    A path to the model.
+    A path to the dataset. Specfically the .yaml file.
+    A project name. this will be the top level folder.
+    A run name. This will be for the specific run in the project.
+It will save the run and the models in the model folder. This will also have all of the validation metrics.
+
+### Setup for GPU support REQUIRED!!!
+Follow this guide for setting up gpu access https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+
+This will allow the container access to the gpu.
+
+
+
+
 
 ## pig-sorting-api(Not fully implemented)
 This is our primairy backend for our services and will handle routing between all of the different modules.
@@ -53,6 +78,7 @@ This will be our primairy frontend and will allow the user to interact with our 
 It will allow the user to query our MongoDB and generate graphs etc...
 It will also have some way to talk to the data-intake module to schedule pictures, videos etc...
 It will allow the testing and selection of models as well.
+It will currently only wait for 5 minutes for the training to complete. - The backend training will still contniue though.
 
 ## workflow(Not yet implemented)
 Some form of automated testing and ci/cd.

@@ -22,6 +22,8 @@ import bson
 import logging
 import json
 
+import httpx
+
 
 # Set to the log level desired, also may stop fastapi from suppressing the logs.
 logging.basicConfig(
@@ -89,6 +91,7 @@ async def get_mongo_data():
     except Exception as e:
         logger.error(f"Error getting data :{e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+    
 
 
 # Will send all of the images selected between certain times
@@ -200,6 +203,53 @@ async def get_images_by_date(request: TimesRequest):
 #         # Log the exception for debugging purposes
 #         print(f"Error in predict_base64 endpoint: {e}")
 #         return JSONResponse(content={"error": str(e)}, status_code=500)
+
+@app.get("/api/v1/training/trainer", response_class=JSONResponse)
+async def run_training(
+    model_path: str = Query(...),
+    dataset_path: str = Query(...),
+    project_name: str = Query("default_project"),
+    run_name: str = Query("run_001")
+):
+    try:
+        logger.info("📦 Training request received")
+
+        # Send request to model-training container as it has gpu support
+        async with httpx.AsyncClient(timeout=300) as client:
+            response = await client.get("http://model-training:8401/training/trainer",
+            params={
+            "model_path": model_path,
+            "dataset_path": dataset_path,
+            "project_name": project_name,
+            "run_name": run_name
+        })
+        data = response.json()
+
+        # Log to MongoDB
+        result_doc = {
+            "model_path": model_path,
+            "dataset_path": dataset_path,
+            "model_export_path": str(data.get("model_export_path")),
+            "project": project_name,
+            "run": run_name,
+            "train_results": str(data.get("train_results")),
+            "val_results": str(data.get("val_results")),
+            "date_time": datetime.utcnow()
+        }
+
+        db["training_logs"].insert_one(result_doc)
+
+        return {
+            "message": "✅ Training completed!",
+            "model_export_path": str(data.get("model_export_path")),
+            "train_results": str(data.get("train_results")),
+            "val_results": str(data.get("val_results")),
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Training failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
         
         
 # Helper function to convert ObjectId to string
