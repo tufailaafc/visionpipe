@@ -237,6 +237,7 @@ async def run_training(
             "date_time": datetime.utcnow()
         }
 
+        logger.info(f"Training Logs: {result_doc}")
         db["training_logs"].insert_one(result_doc)
 
         return {

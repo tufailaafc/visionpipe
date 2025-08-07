@@ -2,3 +2,4 @@ streamlit
 requests
 pymongo
 pandas
+sseclient
