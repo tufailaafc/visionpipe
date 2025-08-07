@@ -37,7 +37,7 @@ if st.button("🚀 Start Training"):
     log = st.empty()
 
     try:
-        base_url = "http://model-training:8401/training/stream"
+        base_url = "http://pig-sorting-api:8001/api/v1/training/stream_trainer"
         params = {
             "model_path": model_path,
             "dataset_path": dataset_path,

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Body
 from typing import List
@@ -23,6 +23,7 @@ import logging
 import json
 
 import httpx
+import asyncio
 
 
 # Set to the log level desired, also may stop fastapi from suppressing the logs.
@@ -53,7 +54,7 @@ app.add_middleware(
 
 
 
-# A custom class to ensure we get the input as expected.
+# A custom class to ensure we get the input as expected for selecting times for monogoDB
 class TimesRequest(BaseModel):
     times: List[str]
 
@@ -212,7 +213,7 @@ async def run_training(
     run_name: str = Query("run_001")
 ):
     try:
-        logger.info("📦 Training request received")
+        logger.info("Training request received")
 
         # Send request to model-training container as it has gpu support
         async with httpx.AsyncClient(timeout=300) as client:
@@ -241,14 +242,75 @@ async def run_training(
         db["training_logs"].insert_one(result_doc)
 
         return {
-            "message": "✅ Training completed!",
+            "message": "Training completed!",
             "model_export_path": str(data.get("model_export_path")),
             "train_results": str(data.get("train_results")),
             "val_results": str(data.get("val_results")),
         }
 
     except Exception as e:
-        logger.error(f"❌ Training failed: {e}")
+        logger.error(f"Training failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+
+
+@app.get("/api/v1/training/stream_trainer")
+async def proxy_training_stream(
+    model_path: str = Query(...),
+    dataset_path: str = Query(...),
+    project_name: str = Query("default_project"),
+    run_name: str = Query("run_001"),
+    epochs: int = Query(1)
+):
+    try:
+        logger.info("Streaming training request received")
+
+        # The parameters to configure the model training
+        model_training_url = "http://model-training:8401/training/stream"
+        params = {
+            "model_path": model_path,
+            "dataset_path": dataset_path,
+            "project_name": project_name,
+            "run_name": run_name,
+            "epochs": epochs
+        }
+
+        # Async generator to yield streamed training data
+        async def event_stream():
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("GET", model_training_url, params=params) as response:
+                    async for line in response.aiter_lines():
+                        if line.startswith("data:"):
+                            json_data = line.replace("data: ", "").strip()
+
+                            try:
+                                parsed = json.loads(json_data)
+                                logger.info(f"Streaming event: {parsed}")
+
+                                # Log final result to MongoDB
+                                if parsed.get("status") == "done":
+                                    result_doc = {
+                                        "model_path": model_path,
+                                        "dataset_path": dataset_path,
+                                        "model_export_path": parsed.get("path"),
+                                        "project": project_name,
+                                        "run": run_name,
+                                        "train_results": parsed.get("train_results"),  
+                                        "val_results": parsed.get("val_results"),
+                                        "date_time": datetime.utcnow()
+                                    }
+                                    db["training_logs"].insert_one(result_doc)
+                                    logger.info(f"Inserted training log for run: {run_name}")
+
+                            except Exception as e:
+                                logger.warning(f"Failed to parse JSON event: {e}")
+
+                            yield f"{line}\n\n"
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+    except Exception as e:
+        logger.error(f"Streaming training failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
         

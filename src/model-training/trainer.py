@@ -125,30 +125,23 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
         }
         queue.put(data)
 
-    # Will only be called once the training is finished and end the stream.
-    def on_train_end(trainer):
-        data = {
-            "status": "done",
-            "path": trainer.args.save_dir  # or wherever model is saved
-        }
-        queue.put(data)
-
 
     # This will attach our function so that we will have access to the progress
     model.add_callback("on_train_epoch_end", on_epoch_end)
-    model.add_callback("on_train_end", on_train_end)
     
 
 
     # Train the model using the supplied dataset for n epochs
     train_results = model.train(data=dataset_path, epochs=epochs, save=True, project=output_dir, name=run_name)
 
-    train_results = train_results.to_json()
+    train_results = train_results.to_json() # The models performance on the training set.
+
 
     # Evaluate the model's performance on the validation set
     val_results = model.val(verbose=True)
 
     val_results = val_results.to_json()
+
 
     # Perform object detection on an image using the model
     # results = model("https://ultralytics.com/images/bus.jpg")
@@ -160,7 +153,13 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
     # Dynamic being true helps with handling images of different sizes.
     export_model = model.export(format="onnx", dynamic=True)
 
-    return output_dir + run_name, train_results, val_results
+    
+    queue.put({
+        "status": "done", # will stop the connnection
+        "path": os.path.join(output_dir, run_name),
+        "train_results": train_results,
+        "val_results": val_results
+    })
 
 
 
@@ -203,7 +202,7 @@ async def stream_training(model_path: str, dataset_path: str,
     progress_queues[run_name] = q
 
     # Run training in separate thread to avoid blocking
-    threading.Thread(target=train_model_stream, args=(model_path, dataset_path,q , project_name, run_name, epochs), daemon=True).start()
+    threading.Thread(target=train_model_stream, args=(model_path, dataset_path, q, project_name, run_name, epochs), daemon=True).start()
 
     # Generate the messages to pass back to the frontend server
     async def event_gen():
