@@ -1,5 +1,5 @@
 # Has all the requirements for ultralytics including gpu support
-FROM ultralytics/ultralytics:latest 
+FROM ultralytics/ultralytics:8.3.175 
 
 
 
