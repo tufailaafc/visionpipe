@@ -16,6 +16,8 @@ import threading
 
 from queue import Queue
 
+import zipfile
+
 progress_queues = {}
 
 
@@ -104,7 +106,7 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
     # Create a new YOLO model from scratch
     # model = ultralytics.YOLO("yolo11n.yaml")
 
-    # Making sure the project direcotry exists to store the exported model
+    # Making sure the project directory exists to store the exported model
     output_dir = f"/app/models/{project_name}" if project_name else "/app/models/default_project"
     os.makedirs(output_dir, exist_ok=True)
 
@@ -112,7 +114,7 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
     model = ultralytics.YOLO(model_path)
 
 
-    # Will output data for ever epoch
+    # Will output data for every epoch
     def on_epoch_end(trainer):
         epoch = trainer.epoch + 1
         total = trainer.epochs
@@ -129,6 +131,9 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
     # This will attach our function so that we will have access to the progress
     model.add_callback("on_train_epoch_end", on_epoch_end)
     
+
+    # We make sure that the file is unzipped and return the path to the .yaml file if it exists.
+    dataset_path = prepare_dataset(dataset_path)
 
 
     # Train the model using the supplied dataset for n epochs
@@ -218,11 +223,58 @@ async def stream_training(model_path: str, dataset_path: str,
 
 
 
-# Gets all available datasets and projects
+# Gets all available datasets and projects, returns a path to the zip folder
+@app.get("/training/datasets")
 def get_data_sets():
-    root_path = "app/data/processed"
+    try:
+        root_path = "processed"
+        projects = dict()
 
-    projects = next(os.walk(root_path))[1] # Gets the projects which should be in the top level of the folder
+        for project, _, files in os.walk(root_path):
+            for file in files:  
+                projects["full_path"]=f"{project}/{file}"
 
-    return projects
+        return {projects["full_path"]}   
+           
+    except Exception as e:
+        logger.error(f"Error in datasets endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    
 
+
+
+
+# Will look for the .yaml file inside supplied directory and can handle zip folders
+# Returns a path to the .yaml or .yml file 
+def prepare_dataset(dataset: str) -> str:
+    try:
+        if dataset.endswith(".zip"):
+            dataset = unzip_file(dataset, ".")
+        dataset = find_yaml_file(dataset)
+        logger.info(f"The path to the .yaml file: {dataset}")
+        return dataset
+    except (FileNotFoundError, zipfile.BadZipFile) as e:
+        logger.error(f"Dataset preparation failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    
+
+# Unzips the supplied folder to the specified directory
+# Returns the path to the extracted folder
+def unzip_file(zip_path: str, extract_to: str = "/tmp/unzipped") -> str:
+    os.makedirs(extract_to, exist_ok=True)
+
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_to)
+
+    return extract_to
+
+
+# Searches for the first .yaml/.yml file in a directory
+# Returns full path to the .yaml/.yml file.
+def find_yaml_file(directory: str) -> str:
+    for root, _, files in os.walk(directory):
+        for file in files:
+            if file.endswith(".yaml") or file.endswith(".yml"):
+                return os.path.join(root, file)
+
+    raise FileNotFoundError("No .yaml file found in the directory.")

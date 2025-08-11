@@ -6,13 +6,38 @@ import json
 from urllib.parse import urlencode
 import time
 
+
+# Returns a path to the datasets that are stored on the server which will be a zip folder 
+def get_datasets():
+    try:
+        response = requests.get(
+            "http://model-training:8401/training/datasets"
+        )
+        if response.status_code == 200:
+            result = response.json()
+            return result
+        else:
+            st.error(f"API Error: {response.status_code} - {response.text}")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Connection error: {e}")
+
+
+
+
+
+
+
+
+
 st.set_page_config(page_title="YOLO Trainer", layout="centered")
 
 st.title("📦 Train YOLOv8 via FastAPI")
 
 # fields for users to configure the training
 model_path = st.text_input("Model Path", value="yolo11n.pt")
-dataset_path = st.text_input("Dataset YAML Path", value="coco8.yaml")
+
+dataset_path = st.selectbox("Dataset path ie to the zip folder", get_datasets())
+
 project_name = st.text_input("Project Name", value="my_project")
 run_name = st.text_input("Run Name", value="run001")
 epochs = st.number_input("Epochs", min_value=1)
@@ -73,3 +98,27 @@ if st.button("🚀 Start Training"):
 
     except Exception as e:
         st.error(f"Streaming error: {e}")
+
+
+
+
+
+def get_datasets():
+    try:
+        response = requests.get(
+            #works because the backend is on the same docker network. If not replace (pig_sorting_api) with the server ip
+            "http://model-training:8401/training/datasets",  # Replace with Jetson IP or server IP
+            #params={"model_id": model_id, "colour_corrected":colour_corrected, "ground_truth":ground_truth},
+            #files={"file": uploaded_file}
+        )
+        if response.status_code == 200:
+            result = response.json()
+            st.json(result)
+        else:
+            st.error(f"API Error: {response.status_code} - {response.text}")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Connection error: {e}")
+
+
+if st.button("Available Projects"):
+    get_datasets()
