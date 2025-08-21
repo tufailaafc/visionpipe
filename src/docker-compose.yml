@@ -63,9 +63,8 @@ services:
     build:
       context: ./data-intake
       dockerfile: Dockerfile
-    # network_mode: "host"  # Use host networking for local development
     ports:
-      - "8301:8301" # port is undecided so far will implement later ##########################
+      - "8301:8301"
     environment:
       - NVR_USERNAME=${NVR_USERNAME}
       - NVR_PASSWORD=${NVR_PASSWORD}
@@ -77,15 +76,16 @@ services:
       - ../data/videos:/app/videos
     restart: unless-stopped
 
+
+  # This container handles training different models
   model-training:
     build:
       context: ./model-training
       dockerfile: Dockerfile
-    shm_size: '6gb' # needed to ensure enough space for training.
+    shm_size: '6gb' # needed to ensure enough space for training. May need to be increased if you are training larger models
     ports:
       - "8401:8401" 
     runtime: nvidia # In order to support gpu for training
-    # network_mode: "host"  # Use host networking for local development
     deploy:
       resources:
         reservations:
@@ -94,8 +94,6 @@ services:
               count: all
               capabilities: [gpu]
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     volumes:
@@ -103,4 +101,66 @@ services:
       - ../models:/app/models
     restart: unless-stopped
 
+  # One of the deployment containers that is suitable for testing trained models
+  model-deploy:
+    build:
+      context: ./model-deploy
+      dockerfile: Dockerfile
+    ports:
+      - "8601:8601" 
+    runtime: nvidia # In order to support gpu for inference
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    volumes:
+      - ../models:/app/models
+    restart: unless-stopped
+
+  # The second deployment container that can handle rtsp streams as a data input and does realtime inference
+  deep-stream:
+    build:
+      context: ./deep-stream
+      dockerfile: Dockerfile
+    runtime: nvidia
+    privileged: true  # Add this for hardware decoder access
+    ipc: host        # Add this for shared memory
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video  # Add 'video' capability
+      - NVR_USERNAME=${NVR_USERNAME}
+      - NVR_PASSWORD=${NVR_PASSWORD}
+      - NVR_IP=${NVR_IP}
+      - NVR_PORT=${NVR_PORT}
+    volumes:
+      - ../models:/app/models
+      - ./deep-stream/deepstream:/app/deepstream
+      - ../data/videos:/app/videos  # Mount your video files
+      - /dev:/dev  # Device access for hardware decoders
+    ports:
+      - "8701:8701"
+      - "8554:8554"
+    restart: unless-stopped
+
+  # This will handle converting streams into different formats for compatibility between DeepStream and Streamlit
+  data-stream:
+    build:
+      context: ./data-stream
+      dockerfile: Dockerfile
+    ports:
+      - "8801:8801" 
+    restart: unless-stopped
   
