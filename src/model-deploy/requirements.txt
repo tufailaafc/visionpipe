@@ -1,0 +1,9 @@
+# inference
+supervision
+opencv-python
+pillow
+numpy
+pydantic
+fastapi
+uvicorn
+
