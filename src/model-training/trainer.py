@@ -58,41 +58,67 @@ app.add_middleware(
 # specifically the .yaml file in yolo11 format.
 # We optionally take the project name and run name
 # Returns the trained model in onnx formet as well as the validation results.
-def train_model(model_path: str, dataset_path: str, project_name: str = "", run_name: str = "", epochs:int=1):
+def train_model(model_path: str, 
+                dataset_path: str, 
+                project_name: str = "", 
+                run_name: str = "", 
+                epochs:int=50,
+                batch:int=16,
+                lr0: float = 0.002,
+                lrf: float=0.01, 
+                augment:bool = False):
 
-    # Create a new YOLO model from scratch
-    # model = ultralytics.YOLO("yolo11n.yaml")
+    # TODO add training parameters to the output for logging
 
 
     # Making sure the project direcotry exists to store the exported model
     output_dir = f"/app/models/{project_name}" if project_name else "/app/models/default_project"
     os.makedirs(output_dir, exist_ok=True)
 
-    # Load a pretrained YOLO model (recommended for training)
+    # Load a pretrained YOLO model (recommended for training), will download one if set to someting like yolo11s.pt
     model = ultralytics.YOLO(model_path)
 
 
     # Train the model using the supplied dataset for n epochs
-    train_results = model.train(data=dataset_path, epochs=epochs, save=True, project=output_dir, name=run_name)
+    train_results = model.train(data=dataset_path, 
+                                epochs=epochs,
+                                batch=batch,
+                                lr0=lr0,
+                                lrf=lrf,
+                                augment=augment, 
+                                save=True, 
+                                project=output_dir, 
+                                name=run_name,
+                                patience=20,)
 
     train_results = train_results.to_json()
 
-    # Evaluate the model's performance on the validation set
-    val_results = model.val(verbose=True)
+    # # Evaluate the model's performance on the validation set
+    # val_results = model.val(verbose=True)
 
-    val_results = val_results.to_json()
+    # val_results = val_results.to_json()
 
-    # Perform object detection on an image using the model
-    # results = model("https://ultralytics.com/images/bus.jpg")
+    # # Perform object detection on an image using the model
+    # # results = model("https://ultralytics.com/images/bus.jpg")
 
 
     
 
-    # Export the model to ONNX format
-    # Dynamic being true helps with handling images of different sizes.
-    export_model = model.export(format="onnx", dynamic=True)
+    # # Export the model to ONNX format
+    # # Dynamic being true helps with handling images of different sizes.
+    # export_model = model.export(format="onnx", dynamic=True)
 
-    return output_dir + run_name, train_results, val_results
+    # return output_dir + run_name, train_results, val_results
+    # --- VALIDATE best checkpoint ---
+    best_model_path = f"{output_dir}/{run_name}/weights/best.pt"
+    best_model = ultralytics.YOLO(best_model_path)
+    val_results = best_model.val(verbose=True)
+    val_results = val_results.to_json()
+
+    # --- EXPORT best checkpoint to ONNX ---
+    export_model = best_model.export(format="onnx", dynamic=True)
+
+    return best_model_path, train_results, val_results
 
 
 
@@ -156,7 +182,8 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
 
     # Export the model to ONNX format
     # Dynamic being true helps with handling images of different sizes.
-    export_model = model.export(format="onnx", dynamic=True)
+    #export_model = model.export(format="onnx", dynamic=True)
+    export_model = model.export(format="onnx")
 
     
     queue.put({
