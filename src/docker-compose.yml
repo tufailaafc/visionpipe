@@ -3,6 +3,7 @@ services:
   mongo:
     image: mongo
     container_name: PigEvalMongo
+    #command: ["--replSet", "rs0"]
     ports:
       - "27017:27017"
     environment:
@@ -10,8 +11,30 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
      - ../data/mongo-data:/data/db #A bind mount so that the data is stored beside docker-compose.yml
+    #  - ./mongo/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
     env_file: .env
     restart: unless-stopped
+    # healthcheck:
+    #   test: ["CMD", "mongosh", "--quiet", "--eval", "rs.status()"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 10
+    #   start_period: 40s
+  # mongo:
+  #   image: mongo
+  #   container_name: PigEvalMongo
+  #   command: ["bash","/docker-entrypoint-initdb.d/mongo-init.sh"]
+  #   ports:
+  #     - "27017:27017"
+  #   environment:
+  #     MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+  #     MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+  #   volumes:
+  #     - ../data/mongo-data:/data/db
+  #     - ../data/mongo-config:/data/configdb
+  #     - ./mongo/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro
+  #   env_file: .env
+  #   restart: unless-stopped
 
   # The frontend for users to interact with our system
   pig-sorting-streamlit:
@@ -40,6 +63,9 @@ services:
       - ../data/images:/app/images  # Mount image folder where we store all images
       - ./pig-sorting-api/packages:/app/packages # Mount folder to download packages to so they persist across builds
     restart: unless-stopped
+    depends_on:
+      - mongo
+      - model-deploy
 
   # For data annotation.
   label-studio:
@@ -68,12 +94,15 @@ services:
     environment:
       - NVR_USERNAME=${NVR_USERNAME}
       - NVR_PASSWORD=${NVR_PASSWORD}
+      - NVR_IP=${NVR_IP}
+      # - NVR_PORT=${NVR_PORT}
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - ../data/images:/app/images
       - ../data/videos:/app/videos
+      - ./data-intake/config.json:/app/config.json
     restart: unless-stopped
 
 
@@ -160,6 +189,11 @@ services:
     build:
       context: ./data-stream
       dockerfile: Dockerfile
+    environment:
+      - NVR_USERNAME=${NVR_USERNAME}
+      - NVR_PASSWORD=${NVR_PASSWORD}
+      - NVR_IP=${NVR_IP}
+      # - NVR_PORT=${NVR_PORT}
     ports:
       - "8801:8801" 
     restart: unless-stopped

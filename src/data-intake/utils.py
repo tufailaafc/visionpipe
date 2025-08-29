@@ -61,6 +61,7 @@ def writeExifTag(image_path: str, author:str="", serialNumber:str="", dateTime:s
 
         # This will allow us to know when the photo was taken
         if dateTime != "":
+            dateTime = dateTime.strftime("%Y:%m:%d %H:%M:%S")
             # date time must come in the format dateTime = "2025:06:24 14:58:33" years:month:day hour:minute:seconds
             exif_dict["0th"][piexif.ImageIFD.DateTime] = dateTime.encode('utf-8')
             #tag for the visual display that is where most apps look for date created

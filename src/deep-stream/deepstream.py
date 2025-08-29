@@ -10,6 +10,8 @@ from ctypes import *
 #import time
 import sys
 import math
+import datetime
+# import pyds
 #import platform
 
 
@@ -137,6 +139,28 @@ def pgie_frame_probe(pad, info, user_data):
 
     return Gst.PadProbeReturn.OK
 
+
+# def pgie_detection_probe(pad, info, u_data):
+#     buffer = info.get_buffer()
+#     if not buffer:
+#         return Gst.PadProbeReturn.OK
+
+#     # Retrieve batch metadata from the buffer
+#     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(buffer))
+#     l_frame = batch_meta.frame_meta_list
+
+#     while l_frame is not None:
+#         frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+#         obj_meta_list = frame_meta.obj_meta_list
+#         while obj_meta_list is not None:
+#             obj_meta = pyds.NvDsObjectMeta.cast(obj_meta_list.data)
+#             print(f"Detected object class id: {obj_meta.class_id}")
+#             obj_meta_list = obj_meta_list.next
+#         l_frame = l_frame.next
+
+#     return Gst.PadProbeReturn.OK
+
+
 frame_counter = {}
 
 def pad_debug_probe_limited(pad, info, user_data):
@@ -209,6 +233,8 @@ def decodebin_child_added(child_proxy, Object, name: str, user_data):
         if decoder_src_pad:
             print("🧷 Attaching pad probe to decoder's src pad")
             decoder_src_pad.add_probe(Gst.PadProbeType.BUFFER, new_pad_probe, None)
+
+            
 
 def cb_newpad(decodebin, pad, data):
     global streammux
@@ -477,6 +503,14 @@ def main(args):
     if not pgie:
         sys.stderr.write("Unable to create Pgie \n")
         sys.exit(1)
+    ########################################
+    # pgie_sink_pad = pgie.get_static_pad("src")  # or "sink", see below
+    # if not pgie_sink_pad:
+    #     sys.stderr.write("Unable to get src pad of PGIE\n")
+    # else:
+    #     pgie_sink_pad.add_probe(Gst.PadProbeType.BUFFER, pgie_detection_probe, None)
+    ########################################
+
 
     # Create tracker, this will track the object as it moves in the video stream
     print("Creating nvtracker \n")
@@ -585,7 +619,8 @@ def main(args):
         sys.stderr.write("Unable to create file sink \n")
         sys.exit(1)
     # This will set where we output our file to, and what we call it.
-    file_sink.set_property("location", "/app/videos/out.mp4")
+    timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
+    file_sink.set_property("location", f"/app/videos/deepstream_{timestamp}_out.mp4")
     file_sink.set_property("sync", 1)
     file_sink.set_property("async", 0)
 

@@ -22,24 +22,42 @@ db = client["visionPipe"]
 # Connect to the table
 image_table = db["metaData"]
 
-# Example image metadata document for testing connection
-# image_metadata = {
-#     "filename": "photo1.jpg",
-#     "uploadDate": datetime.utcnow(),
-#     "format": "jpg",
-#     "dimensions": {"width": 1920, "height": 1080},
-#     "camera": {
-#         "make": "Canon",
-#         "model": "EOS 5D",
-#         "exposure": "1/200",
-#         "aperture": "f/2.8"
-#     },
-#     "gps": {"type": "Point", "coordinates": [-74.0060, 40.7128]},  # GeoJSON format
-#     "tags": ["vacation", "newyork", "summer"],
-#     "url": "https://your-storage.example.com/photo1.jpg"
-# }
 
-# # Test 
-# if __name__ == "__main__":
-#     result = image_table.insert_one(image_metadata)
-#     print(f"Inserted document id: {result.inserted_id}")
+
+
+
+###############################################################
+# import os
+# from pymongo import MongoClient
+# from pymongo.errors import ServerSelectionTimeoutError
+# import time
+
+# # Load credentials
+# username = os.getenv("MONGO_APP_USER") or os.getenv("MONGO_INITDB_ROOT_USERNAME")
+# password = os.getenv("MONGO_APP_PASS") or os.getenv("MONGO_INITDB_ROOT_PASSWORD")
+# host = "mongo"
+# port = 27017
+# replica_set = "rs0"
+# auth_source = "admin"
+
+# uri = f"mongodb://{username}:{password}@{host}:{port}/?authSource={auth_source}&replicaSet={replica_set}"
+
+# # Retry loop for initial connection
+# max_retries = 10
+# delay = 3
+
+# for attempt in range(max_retries):
+#     try:
+#         client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+#         client.admin.command("ping")  # test connection
+#         print("✅ Connected to MongoDB!")
+#         break
+#     except ServerSelectionTimeoutError:
+#         print(f"⚠️ MongoDB not ready, retrying in {delay}s... (Attempt {attempt+1}/{max_retries})")
+#         time.sleep(delay)
+# else:
+#     raise Exception("❌ Failed to connect to MongoDB after multiple attempts")
+
+# # Connect to database and collection
+# db = client["visionPipe"]
+# db_result = db["metaData"]

@@ -3,3 +3,6 @@ requests
 pymongo
 pandas
 sseclient
+pillow
+opencv-python
+numpy

@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install -y \
     libglx-mesa0 \
     libglib2.0-0 \
     ffmpeg \
+    # For debugging, not needed for deployment
+    curl \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt /app/
@@ -18,7 +21,7 @@ RUN pip install --no-cache-dir --default-timeout=100 --retries=10 -r requirement
 
 COPY . /app/
 
-#Not 100% decided which port we will have exposed
+
 EXPOSE 8301 
 
-CMD [ "python","NVRConnection.py" ]
+CMD ["uvicorn", "NVRConnection:app", "--host", "0.0.0.0", "--port", "8301", "--log-level", "info"]

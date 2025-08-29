@@ -8,6 +8,7 @@ from typing import Dict, Any
 
 import os
 import glob
+import random
 
 # Helper functions for main.py to load and deploy models
 
@@ -46,11 +47,15 @@ def _initialize_model(model:str="yolo11n.pt"):
 
 
 # Initialize model on import
-_initialize_model()
+# _initialize_model()
 
 
 # adds the model to the list so that we can use it for inference
 def load_model(model_name: str, model_path: str):
+    """
+    model_name (str): Whatever we want the model to be called. Is used for calling the model in inference
+    model_path (str): This is the full path to the model.
+    """
     try:
         model = YOLO(model_path)
         models[model_name] = model
@@ -175,3 +180,54 @@ def load_all_discovered_models():
             logger.info(f"Loaded model: {name} from {path}")
         except Exception as e:
             logger.warning(f"Failed to load model {name} at {path}: {e}")
+
+
+
+
+def generate_distinct_colors(model_names):
+    """
+    Generate a distinct color for each model.
+    Returns a dict: model_name -> color
+    """
+    colors = {}
+    for name in model_names:
+        # Generate a random RGB color as a tuple
+        colors[name] = tuple(random.choices(range(50, 256), k=3))
+    return colors
+
+
+def annotate_image_with_detections(image: PIL.Image.Image, chain_results: list, model_colors: dict) -> PIL.Image.Image:
+    """
+    Draw bounding boxes from multiple models on a single image.
+    Each model gets a distinct color.
+    """
+    draw = PIL.ImageDraw.Draw(image)
+
+    try:
+        font = PIL.ImageFont.load_default()
+    except:
+        font = None
+
+    for model_result in chain_results:
+        model_name = model_result["model"]
+        detections = model_result["detections"]
+        color = model_colors.get(model_name, (255, 0, 0))  # default red
+
+        for det in detections:
+            bbox = det["bbox"]
+            cls_name = det["class"]
+            conf = det["confidence"]
+
+            draw.rectangle(
+                [(bbox["xmin"], bbox["ymin"]), (bbox["xmax"], bbox["ymax"])],
+                outline=color,
+                width=2
+            )
+
+            label = f"{cls_name}: {conf:.2f}"
+            if font:
+                draw.text((bbox["xmin"], bbox["ymin"] - 10), label, fill=color, font=font)
+            else:
+                draw.text((bbox["xmin"], bbox["ymin"] - 10), label, fill=color)
+
+    return image

@@ -31,7 +31,7 @@ def get_datasets():
 
 st.set_page_config(page_title="YOLO Trainer", layout="centered")
 
-st.title("📦 Train YOLOv8 via FastAPI")
+st.title("📦 Train YOLO via FastAPI")
 
 # fields for users to configure the training
 model_path = st.text_input("Model Path", value="yolo11n.pt")

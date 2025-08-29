@@ -67,7 +67,7 @@ RUN pip install --no-cache-dir --default-timeout=100 --retries=10 -r requirement
 
 # Copy files project
 COPY . /app/
-RUN chmod +x /app/entrypoint.sh
+
 
 
 # Expose port (optional for REST interface or API layer)
@@ -78,8 +78,8 @@ EXPOSE 8554
 # Entry point: Run DeepStream app
 # CMD ["deepstream-app", "-c", "deepstream/deepstream_app_config.txt"]
 
-#CMD ["uvicorn", "deepstream:app", "--host", "0.0.0.0", "--port", "8701", "--log-level", "info"]
-#CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8701"]
-#ENTRYPOINT ["./entrypoint.sh"]
+
+# RUN chmod +x /app/entrypoint.sh
+# ENTRYPOINT ["./entrypoint.sh"]
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 ENTRYPOINT ["supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

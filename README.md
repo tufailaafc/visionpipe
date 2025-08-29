@@ -47,6 +47,7 @@ TODO:
     Potentailly add some logging to mongoDB.
     Add secondary inference engines.
     Add trackers for the objects detected in inference.
+    Currently does not optimize itself for jetson hardware. Is currently only for standard nvidia gpus
 
 ## deployment (Not yet implemented)
 This module will likely handle any deployment configuration when sending things to the cloud
@@ -129,6 +130,7 @@ Some form of automated testing and ci/cd.
 
 
 # Requirements
+An nvidia gpu, and about 16 gb of ram.
 Should be all handled by running sudo docker compose up --build
 Requires opencv-python==4.10.0.84 newer versions will cause timeout error.
 

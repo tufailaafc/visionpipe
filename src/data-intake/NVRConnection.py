@@ -20,6 +20,14 @@ import utils
 from Client import image_table
 
 
+#Import fast api to make the container able to communicate for scheduling etc.
+from fastapi import FastAPI, File, UploadFile, Query
+from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Body
+from typing import List
+import json
+
 
 
 #Try to connect to the NVR
@@ -28,6 +36,21 @@ RETRY_DELAY = 5  # seconds
 
 manual_capture_flags = {}
 #take_picture = False #A flag that we can switch to take a picture if we get an input from the website etc
+# This is a fall back
+g_frame_interval = 960
+
+
+
+FRAME_CONFIG_FILE = "config.json"
+# Stores frame interval per channel: { "1": 960, "2": 120, ... }
+camera_frame_intervals = {}
+
+# for updating how often the cameras take pictures interval 
+# is how many frames between taking pictures and channel is the camera.
+class FrameIntervalRequest(BaseModel):
+    channel: int
+    interval: int
+
 
 
 class ImageMetadata(BaseModel):
@@ -41,6 +64,21 @@ class ImageMetadata(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+# For requests to take a picture
+class CapturePayload(BaseModel):
+    channels: List[int]
+
+# A fast api app to allow this module to talk to the other modules
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 def is_reachable(ip, port=80, timeout=2):
     try:
@@ -51,7 +89,24 @@ def is_reachable(ip, port=80, timeout=2):
 
 
 # Using a logger as opposed to print to make better for scaling and multithreading.
-logger = logging.getLogger()
+# Set to the log level desired, also may stop fastapi from suppressing the logs.
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format="%(asctime)s - %(levelname)s - %(message)s",
+# )
+
+# # Set this to uvicorn.info so that the logs will propagate
+# logger = logging.getLogger('uvicorn.info')
+logger = logging.getLogger("nvr")
+logger.setLevel(logging.DEBUG)
+
+# Ensure logs go to stdout
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+    logger.addHandler(handler)
+
+logger.propagate = False
 
 
 
@@ -113,6 +168,10 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
 
 
 def getCameraChannels(username: str, password: str, nvr_ip: str):
+    """
+    This will take in the nvr credentials look for available channels parse out the channel
+    numbers and return a set of those numbers.
+    """
     try:
         logger.info(f"Connecting to NVR ONVIF cameras at {nvr_ip}...")
         camera = ONVIFCamera(nvr_ip, 80, username, password)
@@ -152,12 +211,15 @@ stop_event = threading.Event()
 def capture_camera(username, password, nvr_ip, channel, subtype=0):
     # This is so that we can tell one camera to take a picture.
     global manual_capture_flags
-
+    global g_frame_interval
+    global camera_frame_intervals
+    logger.debug(f"capture_camera started with channel={repr(channel)} (type={type(channel)})")
+    logger.debug(f"manual_capture_flags keys={list(manual_capture_flags.keys())}")
 
     # These are the ouptut directories for each channel/camera
     video_output_path = f"videos/{datetime.date.today()}_output_video_channel_{channel}.avi"
     frame_output_dir = f"images/extracted_frames/{datetime.date.today()}_extracted_frames_channel_{channel}"
-    frame_interval = 960 # This is how often we take a picture, if set to 60 on a 30 fps camera, it will be 
+    #frame_interval = 960 # This is how often we take a picture, if set to 60 on a 30 fps camera, it will be 
     # about every two seconds.
 
     os.makedirs(frame_output_dir, exist_ok=True)
@@ -220,18 +282,23 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
         # Save video frame
         video_writer.write(frame)
 
-        # Save every nth frame
+        # Save every nth frame, is camera specific
+        frame_interval = camera_frame_intervals.get(str(channel), g_frame_interval)
         if frame_count % frame_interval == 0 or manual_capture_flags[channel].is_set():
-            timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
+            logger.debug(f"Camera: {channel}, frame interval {frame_interval}")
+            #timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y:%m:%d %H:%M:%S")
+            dt_obj = datetime.datetime.now(datetime.timezone.utc)
+            timestamp_str = dt_obj.strftime("%Y:%m:%d %H:%M:%S")
             if manual_capture_flags[channel].is_set():
-                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}_manual.jpg")
+                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}_manual.jpg")
             else:
-                frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp}.jpg")
+                frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}.jpg")
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
             os.chmod(frame_filename, 0o777) #Grants read and write to all users to ensure that label studio can access them
 
-            SavePictureData(frame_filename, channel,"",str(timestamp),"Tests","ceiling")
+            SavePictureData(frame_filename, channel,"", dt_obj, "Tests", "ceiling")
+
             manual_capture_flags[channel].clear()
 
             # Clear frame count so that it will not overflow eventually
@@ -239,7 +306,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
 
         frame_count += 1
 
-        # Optional: Show frame window per camera 
+        # Optional: Show frame window per camera will not work in docker
         # cv2.imshow(f'Camera {channel} Stream', frame)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #     break
@@ -251,7 +318,7 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     logger.info(f"Finished camera channel {channel}. Video saved to: {video_output_path}")
 
 # This will both write the data to the exif tag and save it to the mongoDB
-def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description):
+def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description, trgger_method):
     #images=ImageMetadata
     
     #Add the meta data to the image themselves
@@ -259,18 +326,18 @@ def SavePictureData(image_path, author, serialNumber, dateTime, userComment, des
 
 
      # Convert dateTime string to datetime object (e.g. "2025:07:30 14:41:04") to make querying easier
-    try:
-        dt_obj = datetime.datetime.strptime(dateTime, "%Y:%m:%d %H:%M:%S")
-    except ValueError as e:
-        logger.error(f"Invalid dateTime format: {dateTime}, Error: {e}")
-        dt_obj = None
+    # try:
+    #     dt_obj = datetime.datetime.strptime(dateTime, "%Y:%m:%d %H:%M:%S")
+    # except ValueError as e:
+    #     logger.error(f"Invalid dateTime format: {dateTime}, Error: {e}")
+    #     dt_obj = None
 
     # Using pydantic model to ensure data consistency
     metadata = ImageMetadata(
         image_path=image_path,
         author=author,
         serial_number=serialNumber,
-        date_time=dt_obj,
+        date_time=dateTime,
         user_comment=userComment,
         description=description
     )
@@ -286,34 +353,177 @@ def SavePictureData(image_path, author, serialNumber, dateTime, userComment, des
 
 
 
-if __name__ == "__main__":
+# @app.on_event("startup")
+# async def startup_event():
+# # if __name__ == "__main__":
+#     global manual_capture_flags
+#     username = os.getenv("NVR_USERNAME")
+#     password = os.getenv("NVR_PASSWORD")
+
+#     if not username or not password:
+#         raise ValueError("NVR_USERNAME and NVR_PASSWORD environment variables must be set.")
+
+#     nvr_ip = os.getenv("NVR_IP")
+
+#     # display NVR info.
+#     onvifCameraInfo(username, password, nvr_ip)
+
+#     #channels = [1,3] # gives all of the channels you would like to connect to.
+#     channels = getCameraChannels(username, password, nvr_ip)
+
+
+
+#     # Load frame intervals from config.json if it exists
+#     if os.path.exists(FRAME_CONFIG_FILE):
+#         try:
+#             with open(FRAME_CONFIG_FILE, "r") as f:
+#                 camera_frame_intervals = json.load(f)
+#             logger.info(f"Loaded frame intervals from config.json: {camera_frame_intervals}")
+#         except Exception as e:
+#             logger.error(f"Failed to load frame intervals: {e}")
+#             # fallback to default
+#             camera_frame_intervals = {ch: g_frame_interval for ch in channels}
+#     else:
+#         camera_frame_intervals = {ch: g_frame_interval for ch in channels}
+
+
+#     # Creating a flag for every channel to manually take pictures
+#     manual_capture_flags = {ch: threading.Event() for ch in channels}
+#     logger.debug(f"This is what is inside of manual_capture_flags: {manual_capture_flags}")
+#     threads = []
+#     try:
+#     # for every channel create a thread
+#         for ch in channels:
+#             t = threading.Thread(target=capture_camera, args=(username, password, nvr_ip, ch))
+#             t.start()
+#             threads.append(t)
+#     except KeyboardInterrupt:
+#             logger.info("\nKeyboardInterrupt received, stopping threads...")
+#             stop_event.set()  # Signal threads to stop
+#     # Wait for all threads to finish
+#     for t in threads:
+#         t.join()
+
+@app.on_event("startup")
+async def startup_event():
+    global manual_capture_flags
+    global camera_frame_intervals
 
     username = os.getenv("NVR_USERNAME")
     password = os.getenv("NVR_PASSWORD")
-
     if not username or not password:
         raise ValueError("NVR_USERNAME and NVR_PASSWORD environment variables must be set.")
 
-    nvr_ip = "192.168.1.5"
+    nvr_ip = os.getenv("NVR_IP")
 
-    # display NVR info.
-    onvifCameraInfo(username,password,nvr_ip)
+    # Display NVR info
+    onvifCameraInfo(username, password, nvr_ip)
 
-    #channels = [1,3] # give all of the channels you would like to connect to.
-    channels = getCameraChannels(username,password,nvr_ip)
+    # Get channel list
+    channels = getCameraChannels(username, password, nvr_ip)
 
-    # Creating a flag for every channel to manually take pictures
+    # Load frame intervals for how often we take pictures
+    if os.path.exists(FRAME_CONFIG_FILE):
+        try:
+            with open(FRAME_CONFIG_FILE, "r") as f:
+                camera_frame_intervals = json.load(f)
+            logger.info(f"Loaded frame intervals from config.json: {camera_frame_intervals}")
+        except Exception as e:
+            logger.error(f"Failed to load frame intervals: {e}")
+            camera_frame_intervals = {ch: g_frame_interval for ch in channels}
+    else:
+        camera_frame_intervals = {ch: g_frame_interval for ch in channels}
+
+    # Create manual capture flags
     manual_capture_flags = {ch: threading.Event() for ch in channels}
-    threads = []
+    logger.debug(f"manual_capture_flags: {manual_capture_flags}")
+
+    # Start capture threads (daemon so they won’t block shutdown)
+    for ch in channels:
+        t = threading.Thread(
+            target=capture_camera,
+            args=(username, password, nvr_ip, ch),
+            daemon=True
+        )
+        t.start()
+        logger.info(f"Started capture thread for channel {ch}")
+
+    logger.info("Startup complete — API is ready.")
+
+
+
+
+
+
+
+@app.post("/capture/")
+async def trigger_capture(payload : CapturePayload):
+    global manual_capture_flags
+    """
+    Manually trigger capture on one or more channels
+    """
     try:
-    # for every channel create a thread
-        for ch in channels:
-            t = threading.Thread(target=capture_camera, args=(username, password, nvr_ip, ch))
-            t.start()
-            threads.append(t)
-    except KeyboardInterrupt:
-            logger.info("\nKeyboardInterrupt received, stopping threads...")
-            stop_event.set()  # Signal threads to stop
-    # Wait for all threads to finish
-    for t in threads:
-        t.join()
+        # For every channel we have passed in.
+        for ch in payload.channels:
+            #Check to see if it extists in the list
+            # Ensure that it is a string, because manual_capture_flags is {"1": event}
+            if str(ch) in manual_capture_flags:
+                manual_capture_flags[str(ch)].set()
+                logger.info(f"Manual capture triggered for channel {ch}")
+            else:
+                logger.warning(f"Channel {ch} not found")
+
+        return {"status": "ok", "channels": payload.channels}
+    except Exception as e:
+        logger.error(f"Error in trigger_capture: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+
+# @app.post("/frame_interval/")
+# async def set_frame_interval(interval: int = Body(..., embed=True)):
+#     """
+#     Update the global frame capture interval
+#     """
+#     try:
+#         change_frame_interval(interval)
+#         logger.info(f"Frame interval set to {interval}")
+#         return {"status": "ok", "frame_interval": interval}
+#     except Exception as e:
+#         logger.error(f"Error in set_frame_interval: {e}")
+#         return JSONResponse(status_code=500, content={"error": str(e)})
+def change_frame_interval(channel: int, frame_interval: int):
+    """
+    Update frame interval for a specific channel and save to config.json
+    """
+    global camera_frame_intervals
+    camera_frame_intervals[str(channel)] = frame_interval
+
+    # Save to disk
+    try:
+        with open(FRAME_CONFIG_FILE, "w") as f:
+            json.dump(camera_frame_intervals, f, indent=4)
+        logger.info(f"Frame interval for channel {channel} set to {frame_interval} and saved to config.json")
+    except Exception as e:
+        logger.error(f"Failed to save config.json: {e}")
+
+@app.post("/frame_interval")
+async def set_frame_interval(request: FrameIntervalRequest):
+    """
+    Update the frame interval for a specific camera channel
+    """
+    try:
+        change_frame_interval(request.channel, request.interval)
+        return {"status": "ok", "channel": request.channel, "frame_interval": request.interval}
+    except Exception as e:
+        logger.error(f"Error in set_frame_interval: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+
+@app.get("/health")
+async def health():
+    try:
+        logger.debug("The health end point has been hit.")
+        return {"status": "ok"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})

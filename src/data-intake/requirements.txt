@@ -9,3 +9,5 @@ zeep >= 3.0.0
 onvif_zeep
 piexif
 pydantic
+fastapi
+uvicorn

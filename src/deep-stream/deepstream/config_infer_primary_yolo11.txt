@@ -10,7 +10,8 @@ model-color-format=0
 
 
 #This is where we set our model for processing the stream
-onnx-file=/app/models/strawberry_Identifier/StrawberryTestStatic/weights/best.onnx
+#onnx-file=/app/models/strawberry_Identifier/StrawberryTestStatic/weights/best.onnx
+onnx-file=/app/models/Proper_Test/70 epochs medium run3/weights/best.onnx
 
 
 
@@ -45,5 +46,5 @@ engine-create-func-name=NvDsInferYoloCudaEngineGet
 
 [class-attrs-all]
 nms-iou-threshold=0.45
-pre-cluster-threshold=0.25
+pre-cluster-threshold=0.05
 topk=300

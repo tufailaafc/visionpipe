@@ -72,3 +72,5 @@ ujson==5.10.0
 urllib3==2.5.0
 wrapt==1.17.2
 xmljson==0.2.1
+motor==3.7.1
+aiofiles==24.1.0
