@@ -2,34 +2,34 @@
 This is a project that aims to help manage, train models and annotate images.
 
 ## Default ports
-mongo(database) = 27017
-pig-sorting-api(backend) = 8001
-LabelStudio(annotation) = 8080
-data-intake(data ingestion) = 8301
-model-training = 8401
-pig-sorting-streamlit(frontend) = 8501
-model-deploy = 8601
-deep-stream(app) = 8701
-deep-stream(rtsp output WIP) = 8554
-data-stream(WIP) = 8801
+ - mongo(database) = 27017
+ - pig-sorting-api(backend) = 8001
+ - LabelStudio(annotation) = 8080
+ - data-intake(data ingestion) = 8301
+ - model-training = 8401
+ - pig-sorting-streamlit(frontend) = 8501
+ - model-deploy = 8601
+ - deep-stream(app) = 8701
+ - deep-stream(rtsp output WIP) = 8554
+ - data-stream(WIP) = 8801
 
 
 
 # What it does, break down of components
 ## data-intake (Not fully implemented)
-The data-intake container's purpose is to ingest data from sensors and the nvr.
-It then does some level of processing like ensuring that all of the meta data is correct.
-It will then store the meta data in the MongoDB and the images and videos in data/images and data/videos.
+The data-intake container's purpose is to ingest data from sensors and the nvr. <br>
+It then does some level of processing like ensuring that all of the meta data is correct.<br>
+It will then store the meta data in the MongoDB and the images and videos in data/images and data/videos.<br>
 
 ### Troubleshooting 
-wsse error: If you have an error that has someting to do with the wsse times not being correct then you should:
-Ensure you are on the same network and as the NVR and enter the ip into your browser.
-Then login with the NVR credentials.
-Select System.
-Select Date&Time
-Make sure the timzone is correct.
-Select Sync PC.
-Then click apply.
+wsse error: If you have an error that has someting to do with the wsse times not being correct then you should:<br>
+Ensure you are on the same network and as the NVR and enter the ip into your browser.<br>
+Then login with the NVR credentials.<br>
+Select System.<br>
+Select Date&Time<br>
+Make sure the timzone is correct.<br>
+Select Sync PC.<br>
+Then click apply.<br>
 
 ## data-processor (Not yet implemented)
 
@@ -37,29 +37,30 @@ Then click apply.
 This container will take in a rtsp stream and output an mjpeg stream for easier consumption by the streamlit frontend
 
 ## deep-stream (Not fully implemented yet)
-This container takes in a rtsp stream perform some inference on it and save the video to a file.
-Currently has some weird behaviour, in order to properly save the file so you can view it you must 
-properly end the stream, easiest way that I have found was to switch my internet connection so that it 
-drops. It will also currently overwrite the video file.
+This container takes in a rtsp stream perform some inference on it and save the video to a file.<br>
+Currently has some weird behaviour, in order to properly save the file so you can view it you must <br>
+properly end the stream, easiest way that I have found was to switch my internet connection so that it <br>
+drops. It will also currently overwrite the video file.<br>
 TODO: 
-    Make it stream out an rtsp stream that will hook into datastream.
-    Ensure that you can add multiple rtsp streams. 
-    Potentailly add some logging to mongoDB.
-    Add secondary inference engines.
-    Add trackers for the objects detected in inference.
-    Currently does not optimize itself for jetson hardware. Is currently only for standard nvidia gpus
+ - Make it stream out an rtsp stream that will hook into datastream.
+ - Ensure that you can add multiple rtsp streams. 
+ - Potentailly add some logging to mongoDB.
+ - Add secondary inference engines.
+ - Add trackers for the objects detected in inference.
 
 ## deployment (Not yet implemented)
 This module will likely handle any deployment configuration when sending things to the cloud
 
 ## LabelStudio (Not fully implemented)
-We are using this as our primary annotation software. It will take the data from our MongoDB and then output the annotations to data/label-studio-data right now. The interface can be accessed at localhost:8080
+We are using this as our primary annotation software. <br>
+It will take the data from our MongoDB and then output the annotations to data/label-studio-data right now. <br>
+The interface can be accessed at localhost:8080<br>
 
 TODO: 
-    Make it export properly to the processed folder.
+ - Make it export properly to the processed folder.
 
-When mounting any folder you will need to change the ownership to 1001.
-There are currently two folders which this should be run on.
+When mounting any folder you will need to change the ownership to 1001.<br>
+There are currently two folders which this should be run on.<br>
 
 ```bash
 sudo chown 1001 /data/label-studio-data
@@ -71,25 +72,25 @@ sudo chown 1001 processed
 
 
 ## model-deploy (WIP)
-Loads the models trained by the model training container and will allow the user to upload an image and perform inference with the selected model.
-Currently has the ability to dynamically select the confidence threshold.
+Loads the models trained by the model training container and will allow the user to upload an image and perform inference with the selected model.<br>
+Currently has the ability to dynamically select the confidence threshold.<br>
 TODO:
-    Might want to change it to use a triton inference server.
+ - Might want to change it to use a triton inference server.
 
 
 ## model-training (Not fully implemented)
 This will handle the training and evaluation of the models.
 
 What it requires: 
-    A path to the model. If you put in any of the standard yolo models it will download them for you. For example yolo11n.pt
-    A path to the dataset. Specfically the .yaml file. Must be accesible inside of the docker container. Will auto find if placed in data/processed and should be a .zip folder currently.
-    A project name. this will be the top level folder.
-    A run name. This will be for the specific run in the project.
-It will save the run and the models in the model folder. This will also have all of the validation metrics.
-It will send the metrics to pig-sorting-api which will log the data in mongoDB
+ - A path to the model. If you put in any of the standard yolo models it will download them for you. For example yolo11n.pt
+ - A path to the dataset. Specfically the .yaml file. Must be accesible inside of the docker container. Will auto find if placed in data/processed and should be a .zip folder currently.
+ - A project name. this will be the top level folder.
+ - A run name. This will be for the specific run in the project.
+It will save the run and the models in the model folder. This will also have all of the validation metrics.<br>
+It will send the metrics to pig-sorting-api which will log the data in mongoDB.<br>
 
 TODO: 
-    Make sure that all training parameters are saved with the run.
+ - Make sure that all training parameters are saved with the run.
 
 ### Setup for GPU support REQUIRED!!!
 Follow this guide for setting up gpu access https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
@@ -101,26 +102,25 @@ This will allow the container access to the gpu.
 
 
 ## pig-sorting-api(Not fully implemented)
-This is our primairy backend for our services and will handle routing between all of the different modules. It's primary role will be to handle routing data from the frontend to the different modules.
-And from the different modules to the databse.
+This is our primairy backend for our services and will handle routing between all of the different modules. It's primary role will be to handle routing data from the frontend to the different modules. And from the different modules to the databse.
 
 
 ## pig-sorting-streamlit(Not fully implemented)
 This will be our primairy frontend and will allow the user to interact with our system.
-TODO
-    It will allow the user to query our MongoDB and generate graphs etc...
-    It will also have some way to talk to the data-intake module to schedule pictures, videos etc...
-    Add some form of authentication and authorization to limit user access.
+TODO:
+ - It will allow the user to query our MongoDB and generate graphs etc...
+ - It will also have some way to talk to the data-intake module to schedule pictures, videos etc...
+ - Add some form of authentication and authorization to limit user access.
 
 Current pages:
-    DataBaseView:
-        Allows the user to see the captured images and the metadata
-    DeepStreamView:
-        (WIP) Will allow the user to add extra rtsp sources and should also allow the user to see the output stream
-    ModelDeployView:
-        Has options to select trained models and perform inference with it.
-    ModelTrainView:
-        Allows the user to configure some training parameters(should be increased later), and select datasets, base model to train from, and displays some of the training data in realtime.
+ - DataBaseView:
+    - Allows the user to see the captured images and the metadata
+ - DeepStreamView:
+    - (WIP) Will allow the user to add extra rtsp sources and should also allow the user to see the output stream
+ - ModelDeployView:
+    - Has options to select trained models and perform inference with it.
+ - ModelTrainView:
+    - Allows the user to configure some training parameters(should be increased later), and select datasets, base model to train from, and displays some of the training data in realtime.
 
 
 
@@ -142,7 +142,8 @@ RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verb
 ```
 This is done to reduce how much bandwidth is used if rebuilding often.
 
-You can run this to fix that issue or switch the pip install command to download instead:
+You can run this inside the correct folder to fix that issue or switch the pip install command to download instead:<br>
+example: inside of src/pig-sorting-api<br>
 ```bash
 pip download -r requirements.txt -d ./packages
 ```
@@ -168,8 +169,8 @@ May also require the user to allow legacy tokens to allow exporting with images.
 
 
 # secrets
-In order for everything to start up and work correctly you will need to create a .env file inside of src.
-The inside of the .env file should look something like this.
+In order for everything to start up and work correctly you will need to create a .env file inside of src.<br>
+The inside of the .env file should look something like this.<br>
 
 ```bash
 MONGO_INITDB_ROOT_USERNAME=yourUsername
