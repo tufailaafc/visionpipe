@@ -1,3 +1,23 @@
+"""
+Asynchronous MongoDB client module using Motor.
+
+This module sets up an asynchronous connection to a MongoDB instance using
+credentials from environment variables and exposes:
+
+- `client`: The AsyncIOMotorClient instance connected to the MongoDB server.
+- `db`: The `visionPipe` database.
+- `db_result`: The `metaData` collection within the `visionPipe` database.
+
+Environment variables required:
+- MONGO_INITDB_ROOT_USERNAME
+- MONGO_INITDB_ROOT_PASSWORD
+
+Usage:
+    from client_async import db_result
+
+    # Example asynchronous query
+    result = await db_result.find_one({"some_field": "value"})
+"""
 # from pymongo import MongoClient
 # #from dotenv import load_dotenv
 # import os

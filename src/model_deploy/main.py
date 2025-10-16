@@ -1,3 +1,30 @@
+"""
+YOLO Inference API using FastAPI.
+
+This module provides a RESTful API for performing image inference with
+Ultralytics YOLO models. It supports:
+
+- Single-model predictions (`/model/predict`)
+- Chained predictions using multiple models sequentially (`/model/predict/chain`)
+- Dynamic model loading (`/model/load`, `/model/load/discovered`)
+- Listing available and loaded models (`/models`, `/models/discover`)
+- Health check for model readiness (`/model/health`)
+
+Key Features:
+- Handles base64-encoded images in POST requests.
+- Returns structured detections and optionally annotated images.
+- Supports multiple models and distinct bounding box colors for chaining.
+- Provides error handling with clear HTTP status codes for invalid requests.
+
+Dependencies:
+- FastAPI
+- Pydantic
+- Ultralytics YOLO
+- Python standard libraries: base64, logging, typing, os
+"""
+
+
+
 from pydantic import BaseModel
 from fastapi import FastAPI, File, UploadFile, Query, status
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -6,7 +33,8 @@ from fastapi import Body
 from fastapi import HTTPException
 from ultralytics import YOLO
 from typing import Optional, Dict, Any, List
-import app as app_model
+# import app as app_model
+from . import app as app_model
 import base64
 import logging
 
@@ -73,6 +101,18 @@ app.add_middleware(
 # checks to see if it is available and able to take another request
 @app.get("/model/health")
 def health_check(model_name: str = Query(...)):
+    """
+    Check the readiness of a specific model.
+
+    Args:
+        model_name (str): Name of the model to check.
+
+    Returns:
+        dict: {"status": "healthy", "model": model_name} if ready.
+
+    Raises:
+        HTTPException(503): If the model is not loaded or ready.
+    """
     if not app_model.is_model_ready(model_name):
         raise HTTPException(status_code=503, detail=f"Model '{model_name}' not ready")
     return {"status": "healthy", "model": model_name}
@@ -82,6 +122,23 @@ def health_check(model_name: str = Query(...)):
 
 @app.post("/model/predict", response_model=PredictionResponse)
 async def predict(request: PredictionRequest):
+    """
+    Perform inference on one or more images using a single YOLO model.
+
+    Args:
+        request (PredictionRequest): Contains:
+            - model_name (str): Name of the loaded model to use.
+            - instances (list): List of dicts containing base64-encoded images.
+            - parameters (dict, optional): Extra options like confidence threshold 
+              and return_annotated_image flag.
+
+    Returns:
+        PredictionResponse: Contains detections and optionally annotated images.
+
+    Raises:
+        HTTPException(400): If image instances are invalid.
+        HTTPException(500): On prediction or internal errors.
+    """
     try:
         predictions = []
 
@@ -239,6 +296,25 @@ async def predict(request: PredictionRequest):
 
 @app.post("/model/predict/chain")
 async def predict_chain(request: ChainPredictionRequest):
+    """
+    Perform sequential inference using multiple models (chained predictions).
+
+    Args:
+        request (ChainPredictionRequest): Contains:
+            - model_names (list[str]): List of loaded models to run in order.
+            - instances (list): List of dicts with base64-encoded images.
+            - parameters (dict, optional): Options like confidence threshold 
+              and return_annotated_image flag.
+
+    Returns:
+        dict: {"predictions": [ChainResult]} with detections and optionally 
+              annotated images for each input image.
+
+    Raises:
+        HTTPException(400): If image instances are invalid.
+        HTTPException(404): If a model in the chain is not loaded.
+        HTTPException(500): On prediction or internal errors.
+    """
     try:
         logger.debug(f"Parameters: {request.parameters},\n model names: {request.model_names},\n images:{request.instances}")
         predictions = []
@@ -318,6 +394,19 @@ async def predict_chain(request: ChainPredictionRequest):
 # Load a model dynamically  
 @app.post("/model/load")
 def load_model(model_name: str = Body(...), model_path: str = Body(...)):
+    """
+    Dynamically load a YOLO model into memory.
+
+    Args:
+        model_name (str): Name to assign to the loaded model.
+        model_path (str): Full filesystem path to the model .pt file on the server.
+
+    Returns:
+        dict: {"status": "loaded", "model": model_name} on success.
+
+    Raises:
+        HTTPException(500): If model loading fails.
+    """
     success = app_model.load_model(model_name, model_path)
     if success:
         return {"status": "loaded", "model": model_name}
@@ -327,6 +416,12 @@ def load_model(model_name: str = Body(...), model_path: str = Body(...)):
 # List all loaded models
 @app.get("/models")
 def list_models():
+    """
+    List all currently loaded YOLO models.
+
+    Returns:
+        dict: {"models": [list of loaded model names]}.
+    """
     return {"models": list(app_model.models.keys())}
 
 
@@ -334,7 +429,10 @@ def list_models():
 @app.get("/models/discover")
 def discover_available_models():
     """
-    Lists all available model files found in the /app/models directory.
+    List all YOLO model files available in the /app/models directory on the server.
+
+    Returns:
+        dict: {"models": {model_name: full_path}}.
     """
     return {"models": app_model.discover_models()}
 
@@ -342,6 +440,19 @@ def discover_available_models():
 
 @app.post("/model/load/discovered")
 def load_discovered_model(req: ModelKeyRequest):
+    """
+    Load a YOLO model that has been discovered in the models directory.
+
+    Args:
+        req (ModelKeyRequest): Contains the `model_key` corresponding to the discovered model.
+
+    Returns:
+        dict: {"status": "loaded", "model": model_key} on success.
+
+    Raises:
+        HTTPException(404): If the model key is not found in discovered models.
+        HTTPException(500): If model loading fails.
+    """
     all_discovered = app_model.discover_models()
 
     if req.model_key not in all_discovered:

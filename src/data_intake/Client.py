@@ -1,6 +1,21 @@
 from pymongo import MongoClient
 from datetime import datetime
 import os
+"""
+MongoDB connection setup for data-intake.
+
+This module establishes a connection to the MongoDB server and initializes
+the `visionPipe` database along with the `metaData` collection.
+
+Environment Variables:
+    MONGO_INITDB_ROOT_USERNAME (str): Username for the MongoDB root user.
+    MONGO_INITDB_ROOT_PASSWORD (str): Password for the MongoDB root user.
+
+Attributes:
+    client (MongoClient): Active MongoDB client instance.
+    db (Database): Reference to the `visionPipe` database.
+    image_table (Collection): Reference to the `metaData` collection in the database.
+"""
 
 
 

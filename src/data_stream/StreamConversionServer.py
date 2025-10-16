@@ -24,8 +24,22 @@ CAMERAS = {
 }
 
 def open_stream(rtsp_url):
-    """
-    Takes in an rtsp url and will return a connection to that camera.
+    """Open and maintain a connection to an RTSP stream.
+
+    Attempts to connect to the given RTSP URL using OpenCV's
+    `VideoCapture`. Retries every 5 seconds until a valid
+    connection is established.
+
+    Args:
+        rtsp_url (str): Full RTSP connection string.
+
+    Returns:
+        cv2.VideoCapture: An active video capture object connected
+        to the stream.
+
+    Raises:
+        Exception: If OpenCV fails to initialize a capture object
+        (unlikely, but possible if OpenCV is misconfigured).
     """
     cap = None
     while cap is None or not cap.isOpened():
@@ -39,8 +53,20 @@ def open_stream(rtsp_url):
 
 
 def gen_frames(rtspstream):
-    """
-    Takes in an rtsp url and will yield jpegs everytime it is called
+    """Yield frames from an RTSP stream as JPEG-encoded images.
+
+    Continuously reads frames from the given RTSP stream, encodes them
+    as JPEG, and yields them in MJPEG-compatible format. If the connection
+    drops, it will automatically attempt to reconnect.
+
+    Args:
+        rtspstream (str): Full RTSP connection string.
+
+    Yields:
+        bytes: A multipart MJPEG frame with headers and encoded JPEG data.
+
+    Raises:
+        RuntimeError: If OpenCV cannot encode a frame to JPEG.
     """
     cap = open_stream(rtspstream)
 
@@ -66,6 +92,21 @@ def gen_frames(rtspstream):
 # Will yield mjpeg's for the given camera
 @app.route("/stream/<camera_id>.mjpeg")
 def stream(camera_id):
+    """Stream MJPEG video from a registered camera.
+
+    Provides an MJPEG HTTP endpoint for the specified camera ID.
+    If the camera ID is not registered, returns a 404 error.
+
+    Args:
+        camera_id (str): The key identifying a registered camera in
+            the `CAMERAS` dictionary.
+
+    Returns:
+        flask.Response: Streaming response containing MJPEG frames.
+
+    Raises:
+        werkzeug.exceptions.NotFound: If the camera ID is not registered.
+    """
     #Check to see if the camera is registered
     if camera_id not in CAMERAS:
         return f"Unknown camera ID: {camera_id}", 404

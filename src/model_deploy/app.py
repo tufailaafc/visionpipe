@@ -35,6 +35,21 @@ models = {}
 
 
 def _initialize_model(model:str="yolo11n.pt"):
+    """Initialize a YOLO model for inference.
+
+    Loads the specified YOLO model and updates the global
+    readiness state. Intended for internal use.
+
+    Args:
+        model (str, optional): Path or name of the YOLO model.
+            Defaults to "yolo11n.pt".
+
+    Returns:
+        None
+
+    Raises:
+        Exception: If the model fails to load.
+    """
     global model_yolo, _model_ready
 
     try:
@@ -52,9 +67,14 @@ def _initialize_model(model:str="yolo11n.pt"):
 
 # adds the model to the list so that we can use it for inference
 def load_model(model_name: str, model_path: str):
-    """
-    model_name (str): Whatever we want the model to be called. Is used for calling the model in inference
-    model_path (str): This is the full path to the model.
+    """Load a YOLO model and register it by name.
+
+    Args:
+        model_name (str): Name used to reference the model.
+        model_path (str): Full path to the YOLO model file (.pt).
+
+    Returns:
+        bool: True if the model loaded successfully, False otherwise.
     """
     try:
         model = YOLO(model_path)
@@ -69,18 +89,42 @@ def load_model(model_name: str, model_path: str):
 # def is_model_ready() -> bool:
 #     return _model_ready and model_yolo is not None
 def is_model_ready(model_name: str) -> bool:
+    """Check if a YOLO model is loaded and ready.
+
+    Args:
+        model_name (str): The model name to check.
+
+    Returns:
+        bool: True if the model is loaded, False otherwise.
+    """
     return model_name in models
 
 
 
 # Convert image from bytes to PIL RGB format
 def get_image_from_bytes(binary_image: bytes) -> PIL.Image.Image:
+    """Convert raw bytes into a PIL RGB image.
+
+    Args:
+        binary_image (bytes): Image data in bytes.
+
+    Returns:
+        PIL.Image.Image: Image object in RGB mode.
+    """
     input_image = PIL.Image.open(io.BytesIO(binary_image)).convert("RGB")
     return input_image
 
 
 # Convert PIL image to bytes
 def get_bytes_from_image(image: PIL.Image.Image) -> bytes:
+    """Convert a PIL image into JPEG-encoded bytes.
+
+    Args:
+        image (PIL.Image.Image): The PIL image to encode.
+
+    Returns:
+        bytes: JPEG-encoded image data.
+    """
     return_image = io.BytesIO()
     image.save(return_image, format="JPEG", quality=85)
     return_image.seek(0)
@@ -89,7 +133,23 @@ def get_bytes_from_image(image: PIL.Image.Image) -> bytes:
 
 
 # Perform inference on the given image using the selected model
-def run_inference(input_image: PIL.Image.Image, model_name: str, confidence_threshold: float = 0.5) -> Dict[str, Any]:
+def run_inference(input_image: PIL.Image.Image, model_name: str, 
+                  confidence_threshold: float = 0.5) -> Dict[str, Any]:
+    """Perform inference on an image using a YOLO model.
+
+    Args:
+        input_image (PIL.Image.Image): Input image for detection.
+        model_name (str): The registered model name to use.
+        confidence_threshold (float, optional): Minimum confidence score
+            for detections. Defaults to 0.5.
+
+    Returns:
+        dict: Dictionary containing:
+            - detections (list[dict]): Bounding box detections with fields
+              xmin, ymin, xmax, ymax, confidence, class, and name.
+            - results (ultralytics.engine.results.Results | None):
+              Raw YOLO results object.
+    """
     # Select the model to perform inference with
     model = models.get(model_name)
 
@@ -143,8 +203,16 @@ def run_inference(input_image: PIL.Image.Image, model_name: str, confidence_thre
 
 
 def get_annotated_image(results: list) -> PIL.Image.Image:
-    """
-    Get annotated image using Ultralytics built-in plot method.
+    """Draw an annotated image with YOLO detection results.
+
+    Args:
+        results (list): List of YOLO results objects.
+
+    Returns:
+        PIL.Image.Image: Image with bounding boxes and labels drawn.
+
+    Raises:
+        ValueError: If no results are provided.
     """
     if not results or len(results) == 0:
         raise ValueError("No results provided for annotation")
@@ -156,9 +224,10 @@ def get_annotated_image(results: list) -> PIL.Image.Image:
 
 
 def discover_models() -> Dict[str, str]:
-    """
-    Recursively find all YOLO .pt model files inside the models directory.
-    Returns a dict: model_name -> full_path
+    """Search the models directory for YOLO .pt files.
+
+    Returns:
+        dict: Mapping of model name to full file path.
     """
     model_paths = glob.glob(os.path.join(MODEL_ROOT, "**", "weights", "*.pt"), recursive=True)
     discovered = {}
@@ -172,6 +241,14 @@ def discover_models() -> Dict[str, str]:
 
 
 def load_all_discovered_models():
+    """Load all YOLO models discovered in the models directory.
+
+    Scans the models directory, loads each YOLO model, and registers
+    them in the global `models` dictionary.
+
+    Returns:
+        None
+    """
     models_found = discover_models()
     for name, path in models_found.items():
         try:
@@ -185,9 +262,13 @@ def load_all_discovered_models():
 
 
 def generate_distinct_colors(model_names):
-    """
-    Generate a distinct color for each model.
-    Returns a dict: model_name -> color
+    """Generate distinct RGB colors for each model name.
+
+    Args:
+        model_names (list): List of model names.
+
+    Returns:
+        dict: Mapping of model name to RGB color tuple.
     """
     colors = {}
     for name in model_names:
@@ -196,10 +277,24 @@ def generate_distinct_colors(model_names):
     return colors
 
 
+
 def annotate_image_with_detections(image: PIL.Image.Image, chain_results: list, model_colors: dict) -> PIL.Image.Image:
-    """
-    Draw bounding boxes from multiple models on a single image.
-    Each model gets a distinct color.
+    """Draw bounding boxes from multiple models on a single image.
+
+    Each model’s detections are drawn in a distinct color.
+
+    Args:
+        image (PIL.Image.Image): The image to annotate.
+        chain_results (list[dict]): List of detection results. Each item should contain:
+            - **model** (str): Name of the model.
+            - **detections** (list[dict]): List of detections with keys:
+                - **bbox** (dict): Bounding box coordinates (`xmin`, `ymin`, `xmax`, `ymax`).
+                - **class** (str): Class name of the detected object.
+                - **confidence** (float): Confidence score of the detection.
+        model_colors (dict[str, tuple[int, int, int]]): Mapping of model names to RGB colors.
+
+    Returns:
+        PIL.Image.Image: Annotated image with bounding boxes and labels.
     """
     draw = PIL.ImageDraw.Draw(image)
 

@@ -1,3 +1,33 @@
+"""
+FastAPI API for meat evaluation and image processing pipeline.
+
+This module provides:
+- Asynchronous MongoDB integration using Motor.
+- Endpoints for retrieving metadata and images.
+- Endpoints for triggering model training and chain predictions.
+- A MongoDB watcher to automatically process newly inserted images.
+- Utilities to convert images to base64, save annotated predictions, and log results.
+
+Endpoints include:
+- /api/v1/mongoData          : Fetch all metadata from MongoDB.
+- /api/v1/images/            : Fetch images between given timestamps.
+- /api/v1/training/trainer   : Trigger model training.
+- /api/v1/training/stream_trainer : Stream training logs from GPU container.
+- /chain_predict             : Forward chain prediction requests to model-deploy.
+- /save_prediction           : Save annotated prediction results to MongoDB.
+- /api/v1/collector/capture  : Trigger manual capture of images.
+- /api/v1/collector/frame_interval : Set camera frame interval.
+
+Dependencies:
+- FastAPI
+- Motor (Async MongoDB client)
+- httpx (Async HTTP requests)
+- PIL, OpenCV, NumPy
+- pymongo, bson
+"""
+
+
+
 from fastapi import FastAPI, File, UploadFile, Query, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -119,7 +149,14 @@ class SavePredictionRequest(BaseModel):
 CHAIN_PREDICTION_URL = f"{MODEL_DEPLOY_URL}/model/predict/chain"
 
 async def load_default_models():
-    """Load default models into model-deploy."""
+    """
+    Load default models into the model-deploy service.
+
+    This is typically called once at startup to ensure models are available for predictions.
+
+    Returns:
+        None
+    """
     async with httpx.AsyncClient(timeout=300) as client:
         for name, path in zip(DEFAULT_MODEL_NAMES, DEFAULT_MODEL_PATHS):
             try:
@@ -133,7 +170,23 @@ async def load_default_models():
                 logger.error(f"Failed to load model {name}: {e}")
 
 async def send_to_chain_prediction(image_path: str):
-    """Read image async, encode as base64, send to chain prediction."""
+    """
+    Send an image to the chain prediction endpoint and save the annotated results.
+
+    This function:
+    - Reads the image asynchronously.
+    - Encodes it as base64.
+    - Sends it to the model-deploy chain prediction endpoint.
+    - Flattens model detection results and attaches model names.
+    - Saves the annotated image to disk.
+    - Stores prediction metadata in MongoDB.
+
+    Args:
+        image_path (str): Absolute path to the input image file.
+
+    Returns:
+        None
+    """
     if not os.path.exists(image_path):
         logger.warning(f"Image path does not exist: {image_path}")
         return
@@ -259,7 +312,14 @@ STATE_ID = "mongo_poller"  # unique key for this watcher
 
 
 async def get_last_checkpoint():
-    """Load last checkpoint from Mongo, or fallback to catch-up window."""
+    """
+    Load the last checkpoint timestamp from MongoDB.
+
+    If no checkpoint is found, returns the current time minus the catch-up window.
+
+    Returns:
+        datetime: The timestamp of the last processed document.
+    """
     state = await db[STATE_COLLECTION].find_one({"_id": STATE_ID})
     if state and "last_check" in state:
         ts = state["last_check"]
@@ -272,7 +332,15 @@ async def get_last_checkpoint():
 
 
 async def save_checkpoint(ts: datetime):
-    """Save last checkpoint to Mongo."""
+    """
+    Save the last processed timestamp to MongoDB.
+
+    Args:
+        ts (datetime): Timestamp to save as the last processed checkpoint.
+
+    Returns:
+        None
+    """
     await db[STATE_COLLECTION].update_one(
         {"_id": STATE_ID},
         {"$set": {"last_check": ts}},
@@ -339,6 +407,15 @@ start_watcher_loop()
 
 
 def image_to_base64(img: np.ndarray) -> str:
+    """
+    Convert an OpenCV image (NumPy array) to a base64-encoded PNG string.
+
+    Args:
+        img (np.ndarray): Input image. Can be grayscale or RGB.
+
+    Returns:
+        str: Base64-encoded string of the PNG image.
+    """
     # Ensure image is in BGR format for cv2.imencode as PIL loads in RGB
     if len(img.shape) == 3 and img.shape[2] == 3: # Check if it's a 3-channel image
         img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)

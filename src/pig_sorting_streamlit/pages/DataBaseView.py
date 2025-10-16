@@ -110,6 +110,7 @@ if st.button("Fetch Images"):
                     with cols[j]:
                         image = Image.open(BytesIO(base64.b64decode(img_data["image"])))
                         st.image(image, caption=f"{img_data['filename']}\n{img_data['timestamp']}", use_container_width='always')
+    
         else:
             st.error(f"API Error: {response.status_code} - {response.text}")
     except Exception as e:

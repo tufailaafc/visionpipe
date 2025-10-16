@@ -16,8 +16,8 @@ from pydantic import BaseModel
 
 
 # Custom class that contains EXIF manipulation functions
-import utils
-from Client import image_table
+from . import utils
+from .Client import image_table
 
 
 #Import fast api to make the container able to communicate for scheduling etc.
@@ -48,12 +48,28 @@ camera_frame_intervals = {}
 # for updating how often the cameras take pictures interval 
 # is how many frames between taking pictures and channel is the camera.
 class FrameIntervalRequest(BaseModel):
+    """Request model for updating camera frame intervals.
+
+    Attributes:
+        channel (int): The target camera which is tied to port number.
+        interval (int): Number of frames to skip between captures for this channel.
+    """
     channel: int
     interval: int
 
 
 
 class ImageMetadata(BaseModel):
+    """Model representing metadata for a captured image.
+
+    Attributes:
+        image_path (str): Path to the saved image file.
+        author (str): Name or identifier of the user/system that captured the image.
+        serial_number (str, optional): Serial number of the camera.
+        date_time (datetime.datetime): Timestamp of when the image was captured.
+        user_comment (str, optional): User-provided comment or note.
+        description (str, optional): Additional description of the image.
+    """
     image_path: str
     author: str
     serial_number: str = None
@@ -66,6 +82,11 @@ class ImageMetadata(BaseModel):
 
 # For requests to take a picture
 class CapturePayload(BaseModel):
+    """Payload model for manual image capture requests.
+
+    Attributes:
+        channels (List[int]): List of camera channels to trigger captures/pictures on.
+    """
     channels: List[int]
 
 # A fast api app to allow this module to talk to the other modules
@@ -81,6 +102,16 @@ app.add_middleware(
 
 
 def is_reachable(ip, port=80, timeout=2):
+    """Check if a given host is reachable on a specific port.
+
+    Args:
+        ip (str): Target IP address.
+        port (int, optional): Port to test connectivity on. Defaults to 80.
+        timeout (int, optional): Connection timeout in seconds. Defaults to 2.
+
+    Returns:
+        bool: True if the host is reachable, False otherwise.
+    """
     try:
         with socket.create_connection((ip, port), timeout=timeout):
             return True
@@ -112,6 +143,24 @@ logger.propagate = False
 
 #logs data about the nvr and will return a set of numbers that correlate to the connected cameras
 def onvifCameraInfo(username: str, password: str, nvr_ip: str):
+    """Retrieve and log ONVIF camera information from the NVR.
+
+    Args:
+        username (str): NVR username.
+        password (str): NVR password.
+        nvr_ip (str): IP address of the NVR.
+
+    Logs:
+        - Local and UTC system time.
+        - Camera device time.
+        - Manufacturer, model, firmware, serial number, and hardware ID.
+        - ONVIF device service capabilities.
+
+    Raises:
+        socket.error: If network connection fails.
+        Fault: If ONVIF SOAP request fails.
+        RequestException: If HTTP/transport request fails.
+    """
 
     # The container time to see if it is wrong and causing Wsse error
     logger.debug(f"Container Local time:     {time.ctime()}")
@@ -168,9 +217,20 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
 
 
 def getCameraChannels(username: str, password: str, nvr_ip: str):
-    """
-    This will take in the nvr credentials look for available channels parse out the channel
-    numbers and return a set of those numbers.
+    """Discover available camera channels from the NVR.
+
+    Args:
+        username (str): NVR username.
+        password (str): NVR password.
+        nvr_ip (str): IP address of the NVR.
+
+    Returns:
+        set[str]: A set of detected camera channel ie ["3","7","9"].
+
+    Raises:
+        socket.error: If network connection fails.
+        Fault: If ONVIF SOAP request fails.
+        RequestException: If HTTP/transport request fails.
     """
     try:
         logger.info(f"Connecting to NVR ONVIF cameras at {nvr_ip}...")
@@ -209,6 +269,25 @@ stop_event = threading.Event()
 
 
 def capture_camera(username, password, nvr_ip, channel, subtype=0):
+    """Continuously capture frames from a camera channel, saving images and video.
+
+    Args:
+        username (str): NVR username.
+        password (str): NVR password.
+        nvr_ip (str): IP address of the NVR.
+        channel (int): Camera channel to capture from.
+        subtype (int, optional): Stream subtype (e.g., 0 = main stream, 1 = substream).
+            Defaults to 0.
+
+    Behavior:
+        - Saves continuous video stream to `.avi` file.
+        - Saves periodic still frames based on channel frame interval.
+        - Supports manual capture triggers via `manual_capture_flags`.
+        - Stops gracefully when `stop_event` is set.
+
+    Logs:
+        - Frame dimensions, FPS, capture status, saved image paths.
+    """
     # This is so that we can tell one camera to take a picture.
     global manual_capture_flags
     global g_frame_interval
@@ -317,8 +396,26 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
     # cv2.destroyAllWindows()
     logger.info(f"Finished camera channel {channel}. Video saved to: {video_output_path}")
 
-# This will both write the data to the exif tag and save it to the mongoDB
+#This will both write the data to the exif tag and save it to the mongoDB
 def SavePictureData(image_path, author, serialNumber, dateTime, userComment, description, trgger_method):
+    """Write EXIF metadata to an image and store metadata in MongoDB.
+
+    Args:
+        image_path (str): Path to the saved image.
+        author (str): Name or identifier of the capture source.
+        serialNumber (str): Device serial number.
+        dateTime (datetime.datetime): Timestamp of capture.
+        userComment (str): User-provided comment.
+        description (str): Description of the image content.
+        trgger_method (str): How the capture was triggered (e.g., manual, interval).
+
+    Behavior:
+        - Writes EXIF metadata into the image file.
+        - Inserts metadata document into MongoDB.
+    
+    Todo:
+        add trigger_method to the database 
+    """
     #images=ImageMetadata
     
     #Add the meta data to the image themselves
@@ -404,8 +501,70 @@ def SavePictureData(image_path, author, serialNumber, dateTime, userComment, des
 #     for t in threads:
 #         t.join()
 
+def change_frame_interval(channel: int, frame_interval: int):
+    """Update the capture frame interval for a channel and persist it to disk.
+
+    Updates the global `camera_frame_intervals` for the given `channel` (stored as a
+    string key) and writes the resulting mapping to FRAME_CONFIG_FILE (`config.json`)
+    as pretty-printed JSON.
+
+    Args:
+        channel (int): Camera channel identifier to update.
+        frame_interval (int): New interval expressed in number of frames between saved stills.
+
+    Globals modified:
+        camera_frame_intervals (dict[str, int]): Updated with the new interval for `str(channel)`.
+
+    Behaviour:
+        - Writes the `camera_frame_intervals` mapping to FRAME_CONFIG_FILE.
+        - Logs success or failure.
+
+    Error handling:
+        - Any exception raised while writing the file is caught and logged; the
+          function does not re-raise exceptions.
+
+    Returns:
+        None
+    """
+    global camera_frame_intervals
+    camera_frame_intervals[str(channel)] = frame_interval
+
+    # Save to disk
+    try:
+        with open(FRAME_CONFIG_FILE, "w") as f:
+            json.dump(camera_frame_intervals, f, indent=4)
+        logger.info(f"Frame interval for channel {channel} set to {frame_interval} and saved to config.json")
+    except Exception as e:
+        logger.error(f"Failed to save config.json: {e}")
+
+
 @app.on_event("startup")
 async def startup_event():
+    """FastAPI startup handler that initializes camera capture threads and loads config.
+
+    This startup event reads NVR credentials from environment variables, retrieves
+    basic ONVIF device information, discovers available camera channels, loads
+    per-channel frame-intervals from FRAME_CONFIG_FILE (falls back to `g_frame_interval`),
+    creates manual capture `threading.Event` flags for each channel, and spawns a
+    daemon thread that runs `capture_camera` for each discovered channel.
+
+    Globals modified:
+        manual_capture_flags (dict[str, threading.Event]): Mapping of channel -> Event used to trigger manual captures.
+        camera_frame_intervals (dict[str, int]): Mapping of channel -> frames-between-captures.
+
+    Behavior:
+        - Calls `onvifCameraInfo` and `getCameraChannels` (network/ONVIF IO).
+        - May create/modify FRAME_CONFIG_FILE-backed data in memory.
+        - Starts one daemon thread per channel (threads call `capture_camera`).
+        - Logs info, warnings, and errors to `logger`.
+
+    Raises:
+        ValueError: If NVR_USERNAME or NVR_PASSWORD environment variables are not set.
+
+    Returns:
+        None
+    """
+
     global manual_capture_flags
     global camera_frame_intervals
 
@@ -459,8 +618,16 @@ async def startup_event():
 @app.post("/capture/")
 async def trigger_capture(payload : CapturePayload):
     global manual_capture_flags
-    """
-    Manually trigger capture on one or more channels
+    """Manually trigger image capture on one or more camera channels.
+
+    Args:
+        payload (CapturePayload): Payload containing list of channels to capture.
+
+    Returns:
+        dict: Response with status and channels where capture was triggered.
+
+    Raises:
+        500 Internal Server Error: If an error occurs during capture triggering.
     """
     try:
         # For every channel we have passed in.
@@ -491,25 +658,20 @@ async def trigger_capture(payload : CapturePayload):
 #     except Exception as e:
 #         logger.error(f"Error in set_frame_interval: {e}")
 #         return JSONResponse(status_code=500, content={"error": str(e)})
-def change_frame_interval(channel: int, frame_interval: int):
-    """
-    Update frame interval for a specific channel and save to config.json
-    """
-    global camera_frame_intervals
-    camera_frame_intervals[str(channel)] = frame_interval
 
-    # Save to disk
-    try:
-        with open(FRAME_CONFIG_FILE, "w") as f:
-            json.dump(camera_frame_intervals, f, indent=4)
-        logger.info(f"Frame interval for channel {channel} set to {frame_interval} and saved to config.json")
-    except Exception as e:
-        logger.error(f"Failed to save config.json: {e}")
 
 @app.post("/frame_interval")
 async def set_frame_interval(request: FrameIntervalRequest):
-    """
-    Update the frame interval for a specific camera channel
+    """Update the frame capture interval for a specific camera channel.
+
+    Args:
+        request (FrameIntervalRequest): Channel and interval update request.
+
+    Returns:
+        dict: Response with status, updated channel, and new frame interval.
+
+    Raises:
+        500 Internal Server Error: If updating the interval fails.
     """
     try:
         change_frame_interval(request.channel, request.interval)
@@ -522,6 +684,14 @@ async def set_frame_interval(request: FrameIntervalRequest):
 
 @app.get("/health")
 async def health():
+    """Health check endpoint.
+
+    Returns:
+        dict: {"status": "ok"} if service is healthy.
+
+    Raises:
+        500 Internal Server Error: If health check fails.
+    """
     try:
         logger.debug("The health end point has been hit.")
         return {"status": "ok"}

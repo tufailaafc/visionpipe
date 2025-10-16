@@ -12,6 +12,7 @@ pandas
 
 # Requirements for Label Studio SDK so that we can automate imports
 packages/label-studio-sdk-1.0.21.dev0.zip
+#add folder to github
 annotated-types==0.7.0
 anyio==4.9.0
 appdirs==1.4.4

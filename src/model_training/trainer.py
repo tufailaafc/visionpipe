@@ -1,3 +1,26 @@
+"""
+Pig Sorting YOLO Training API
+
+This module provides FastAPI endpoints and helper functions for training and managing Ultralytics YOLO models.
+
+Key Features:
+- Train YOLO models using a provided dataset (.yaml or .zip format) with configurable hyperparameters.
+- Stream training progress in real-time via Server-Sent Events (SSE).
+- Export trained models to ONNX format and validate on the dataset.
+- Dynamically handle datasets: unzip archives, locate .yaml configuration files.
+- GPU support with logging of device and CUDA availability.
+- Threaded training to prevent blocking the API server.
+- Utility endpoints for retrieving available datasets and projects.
+
+Endpoints:
+- /training/trainer: Synchronous training, returns trained model path and validation metrics.
+- /training/stream: Asynchronous training with real-time progress updates.
+- /training/datasets: List all available datasets and projects.
+
+Dependencies:
+- ultralytics, torch, fastapi, logging, asyncio, threading, queue, zipfile, os, json
+"""
+
 import ultralytics
 import logging
 
@@ -32,8 +55,10 @@ logging.basicConfig(
 )
 
 # Verifying access to the gpu and the version of ultralytics
-logger.info("CUDA available:", torch.cuda.is_available())
-logger.info("Device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU")
+# logger.info("CUDA available:", torch.cuda.is_available())
+# logger.info("Device name:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "No GPU")
+logger.info(f"CUDA available: {torch.cuda.is_available()}")
+logger.info(f"Device name: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'No GPU'}")
 
 logger.info(f"Ultralytics version: {ultralytics.__version__}")
 
@@ -67,6 +92,23 @@ def train_model(model_path: str,
                 lr0: float = 0.002,
                 lrf: float=0.01, 
                 augment:bool = False):
+    """
+    Train a YOLO model synchronously.
+
+    Args:
+        model_path (str): Path to a pretrained YOLO model (.pt).
+        dataset_path (str): Path to YOLO-formatted dataset (.yaml).
+        project_name (str, optional): Directory name to save outputs.
+        run_name (str, optional): Name of the training run.
+        epochs (int, optional): Number of training epochs.
+        batch (int, optional): Batch size.
+        lr0 (float, optional): Initial learning rate.
+        lrf (float, optional): Final learning rate factor.
+        augment (bool, optional): Apply data augmentation.
+
+    Returns:
+        Tuple[str, dict, dict]: Path to best checkpoint, training results, validation results.
+    """
 
     # TODO add training parameters to the output for logging
 
@@ -128,7 +170,25 @@ def train_model(model_path: str,
 # We optionally take the project name and run name
 # Returns the trained model in onnx formet as well as the validation results.
 def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_name: str = "", run_name: str = "", epochs:int=1):
+    """
+    Train a YOLO model asynchronously with real-time progress updates.
 
+    Args:
+        model_path (str): Path to pretrained YOLO model (.pt).
+        dataset_path (str): Path to dataset (.yaml or .zip).
+        queue (Queue): Queue to stream progress messages to the caller.
+        project_name (str, optional): Directory to save outputs.
+        run_name (str, optional): Name of the training run.
+        epochs (int, optional): Number of epochs.
+
+    Returns:
+        None
+
+    Notes:
+        - This function is typically run in a separate thread to prevent blocking.
+        - Real-time epoch progress is pushed into `queue` via the `on_epoch_end` callback.
+        - Once training is complete, a final message with status 'done' is pushed into the queue.
+    """
     # Create a new YOLO model from scratch
     # model = ultralytics.YOLO("yolo11n.yaml")
 
@@ -142,6 +202,19 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
 
     # Will output data for every epoch
     def on_epoch_end(trainer):
+        """
+        Callback function executed at the end of each training epoch.
+
+        This function is attached to the YOLO model during training and pushes progress
+        data to a Queue, which can then be streamed to a frontend in real-time.
+
+        Args:
+            trainer (BaseTrainer): Ultralytics YOLO trainer object for the current epoch.
+            queue (Queue): Queue object to push progress updates.
+
+        Returns:
+            None
+        """
         epoch = trainer.epoch + 1
         total = trainer.epochs
         metrics = trainer.metrics
@@ -199,6 +272,19 @@ def train_model_stream(model_path: str, dataset_path: str,queue: Queue, project_
 # Not responsive legacy code
 @app.get("/training/trainer", response_class=JSONResponse)
 async def get_mongo_data(model_path:str, dataset_path:str, project_name:str, run_name:str, epochs:int=1):
+    """
+    Endpoint for synchronous YOLO model training.
+
+    Args:
+        model_path (str): Path to pretrained YOLO model.
+        dataset_path (str): Path to dataset.
+        project_name (str): Output project directory.
+        run_name (str): Training run name.
+        epochs (int, optional): Number of epochs.
+
+    Returns:
+        dict: Trained model path, training results, validation results.
+    """
     try:
         logger.debug("/training/trainer endpoint hit")
         # model, train_results, val_results = train_model("yolo11n.pt", "coco8.yaml")
@@ -228,7 +314,19 @@ async def get_mongo_data(model_path:str, dataset_path:str, project_name:str, run
 @app.get("/training/stream")
 async def stream_training(model_path: str, dataset_path: str,
                           project_name: str = "default", run_name: str = "run001", epochs: int=1):
+    """
+    Endpoint for asynchronous YOLO training with real-time progress via SSE.
 
+    Args:
+        model_path (str): Path to pretrained YOLO model.
+        dataset_path (str): Path to dataset.
+        project_name (str, optional): Output project directory.
+        run_name (str, optional): Training run name.
+        epochs (int, optional): Number of epochs.
+
+    Returns:
+        StreamingResponse: Progress messages as Server-Sent Events.
+    """
     # Create a new queue for this session
     q = Queue()
     progress_queues[run_name] = q
@@ -253,6 +351,12 @@ async def stream_training(model_path: str, dataset_path: str,
 # Gets all available datasets and projects, returns a path to the zip folder
 @app.get("/training/datasets")
 def get_data_sets():
+    """
+    Retrieve all available datasets and projects.
+
+    Returns:
+        dict: Paths to dataset files.
+    """
     try:
         root_path = "processed"
         projects = dict()
@@ -274,6 +378,15 @@ def get_data_sets():
 # Will look for the .yaml file inside supplied directory and can handle zip folders
 # Returns a path to the .yaml or .yml file 
 def prepare_dataset(dataset: str) -> str:
+    """
+    Prepare dataset for training by unzipping and locating YAML file.
+
+    Args:
+        dataset (str): Path to .yaml, .yml, or .zip dataset.
+
+    Returns:
+        str: Path to dataset YAML file.
+    """
     try:
         if dataset.endswith(".zip"):
             dataset = unzip_file(dataset, ".")
@@ -288,6 +401,16 @@ def prepare_dataset(dataset: str) -> str:
 # Unzips the supplied folder to the specified directory
 # Returns the path to the extracted folder
 def unzip_file(zip_path: str, extract_to: str = "/tmp/unzipped") -> str:
+    """
+    Extract ZIP archive to a directory.
+
+    Args:
+        zip_path (str): Path to ZIP archive.
+        extract_to (str, optional): Extraction directory.
+
+    Returns:
+        str: Path to extracted folder.
+    """
     os.makedirs(extract_to, exist_ok=True)
 
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -299,6 +422,18 @@ def unzip_file(zip_path: str, extract_to: str = "/tmp/unzipped") -> str:
 # Searches for the first .yaml/.yml file in a directory
 # Returns full path to the .yaml/.yml file.
 def find_yaml_file(directory: str) -> str:
+    """
+    Locate the first YAML (.yaml or .yml) file in a directory.
+
+    Args:
+        directory (str): Directory to search.
+
+    Returns:
+        str: Path to YAML file.
+
+    Raises:
+        FileNotFoundError: If no YAML file is found.
+    """
     for root, _, files in os.walk(directory):
         for file in files:
             if file.endswith(".yaml") or file.endswith(".yml"):

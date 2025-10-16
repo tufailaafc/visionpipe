@@ -33,11 +33,16 @@ def chain_prediction(uploaded_files, models_to_chain, return_annotated, confiden
     """
     Sends request to perform prediction utilizing model(s) and sets the results in session state "prediction_results"
 
+    :noindex:
+
     Parameters:
         uploaded_files   (list[UploadedFile]): A list of all the images
         models_to_chain  (list[Dict]):         A list of all the models to perform inference with order matters. starts with first element
         return_annotated (bool):               A flag to tell us if we should return a image, this image will have annotations
-        confidence       (float):              This is the threshold for what classes we consider valid and will return 0.5 = 50%    
+        confidence       (float):              This is the threshold for what classes we consider valid and will return 0.5 = 50%  
+
+    Returns:
+        None  
     """
     if st.button("Run Chain Prediction"):
         if not uploaded_files:

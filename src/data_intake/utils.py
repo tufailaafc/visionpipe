@@ -9,6 +9,21 @@ logger = logging.getLogger()
 
 # gets the exif metadata from an image and prints it to console
 def tagReader(path :str):
+    """Read and print EXIF metadata from a single image.
+
+    Opens the specified image file and extracts EXIF metadata tags,
+    printing each tag and its value to the console.
+
+    Args:
+        path (str): Path to the image file.
+
+    Returns:
+        None: This function prints results to the console.
+
+    Raises:
+        FileNotFoundError: If the image file does not exist.
+        PIL.UnidentifiedImageError: If the file is not a valid image.
+    """
     # Read image with OpenCV
     #img = cv2.imread(path)
 
@@ -27,6 +42,20 @@ def tagReader(path :str):
 
 # will take a folder and then get all of the meta data from the images inside
 def getMetaDataDir(root_path: str):
+    """Recursively extract and print EXIF metadata from images in a directory.
+
+    Walks through the given directory and all subdirectories, calling
+    `tagReader` on each file found.
+
+    Args:
+        root_path (str): Path to the root directory containing image files.
+
+    Returns:
+        None: This function prints results to the console.
+
+    Raises:
+        FileNotFoundError: If the directory does not exist.
+    """
     for dirpath, dirnames, filenames in os.walk(root_path):
         for filename in filenames:
             filePath = os.path.join(dirpath, filename)
@@ -37,7 +66,41 @@ def getMetaDataDir(root_path: str):
 
 
 # Will write a exif tag to the image for all supplied fields
-def writeExifTag(image_path: str, author:str="", serialNumber:str="", dateTime:str="",userComment:str="", description:str=""):
+def writeExifTag(image_path: str, author:str="", serialNumber:str="", 
+                 dateTime:str="",userComment:str="", description:str=""):
+    """Write or update EXIF metadata tags in an image.
+
+    Updates the EXIF tags for the specified image with provided metadata
+    values such as author, serial number, timestamp, user comments, and
+    description. Existing tags are preserved unless overwritten.
+
+    Args:
+        image_path (str): Path to the image file.
+        author (str, optional): Camera or photographer name. Defaults to "".
+        serialNumber (str, optional): Camera serial number. Defaults to "".
+        dateTime (str, optional): Timestamp of the image in format
+            "YYYY:MM:DD HH:MM:SS". Defaults to "".
+        userComment (str, optional): Arbitrary user comment. Defaults to "".
+        description (str, optional): Description of the image content. Defaults to "".
+
+    Returns:
+        None
+
+    Raises:
+        FileNotFoundError: If the image file does not exist.
+        ValueError: If the provided EXIF fields are invalid.
+        Exception: For unexpected errors during EXIF writing.
+
+    Example:
+        >>> writeExifTag(
+        ...     "photo.jpg",
+        ...     author="John Doe",
+        ...     serialNumber="12345XYZ",
+        ...     dateTime="2025:09:23 10:30:00",
+        ...     userComment="Inspection photo",
+        ...     description="Front view of the device"
+        ... )
+    """
     try:
         # Get existing EXIF data or create new
         exif_dict = piexif.load(image_path)
