@@ -24,4 +24,4 @@ COPY . /app/
 
 EXPOSE 8301 
 
-CMD ["uvicorn", "NVRConnection:app", "--host", "0.0.0.0", "--port", "8301", "--log-level", "info"]
+CMD ["uvicorn", "data_intake.NVRConnection:app", "--host", "0.0.0.0", "--port", "8301", "--log-level", "info"]

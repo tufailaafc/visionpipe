@@ -26,4 +26,4 @@ COPY . /app/
 
 
 # Expose the port and run the application, ensure the logs are not suppressed
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8601", "--log-level", "info"]
+CMD ["uvicorn", "model_deploy.main:app", "--host", "0.0.0.0", "--port", "8601", "--log-level", "info"]

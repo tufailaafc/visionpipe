@@ -29,6 +29,12 @@ from typing import List
 import json
 
 
+from threading import Lock
+
+camera_comments = {}
+comment_lock = Lock()
+
+
 
 #Try to connect to the NVR
 MAX_RETRIES = 5
@@ -86,8 +92,12 @@ class CapturePayload(BaseModel):
 
     Attributes:
         channels (List[int]): List of camera channels to trigger captures/pictures on.
+        comment (str, optional): This will be able to hold a comment for all cameras in channels.
+        comments (dict[int, str], optional): comments for individual cameras mapped by camera channels.
     """
     channels: List[int]
+    comment: str | None = None
+    comments: dict[int, str] | None = None
 
 # A fast api app to allow this module to talk to the other modules
 app = FastAPI()
@@ -369,14 +379,24 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
             dt_obj = datetime.datetime.now(datetime.timezone.utc)
             timestamp_str = dt_obj.strftime("%Y:%m:%d %H:%M:%S")
             if manual_capture_flags[channel].is_set():
-                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}_manual.jpg")
+                frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}_manual.jpg")
+                trigger_method = "manual"
             else:
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}.jpg")
+                trigger_method = "automatic"
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
             os.chmod(frame_filename, 0o777) #Grants read and write to all users to ensure that label studio can access them
+            
+            
+            user_comment = None
+            with comment_lock:
+                if str(channel) in camera_comments:
+                    user_comment = camera_comments[str(channel)]
+                    del camera_comments[str(channel)]  # consume once
 
-            SavePictureData(frame_filename, channel,"", dt_obj, "Tests", "ceiling")
+
+            SavePictureData(frame_filename, channel,"", dt_obj, user_comment or "No comment", "ceiling",trigger_method)
 
             manual_capture_flags[channel].clear()
 
@@ -615,30 +635,69 @@ async def startup_event():
 
 
 
+# @app.post("/capture/")
+# async def trigger_capture(payload : CapturePayload):
+#     global manual_capture_flags
+#     """Manually trigger image capture on one or more camera channels.
+
+#     Args:
+#         payload (CapturePayload): Payload containing list of channels to capture.
+
+#     Returns:
+#         dict: Response with status and channels where capture was triggered.
+
+#     Raises:
+#         500 Internal Server Error: If an error occurs during capture triggering.
+#     """
+#     try:
+#         # For every channel we have passed in.
+#         for ch in payload.channels:
+#             #Check to see if it extists in the list
+#             # Ensure that it is a string, because manual_capture_flags is {"1": event}
+#             if str(ch) in manual_capture_flags:
+                
+#                 manual_capture_flags[str(ch)].set()
+#                 logger.info(f"Manual capture triggered for channel {ch}")
+#             else:
+#                 logger.warning(f"Channel {ch} not found")
+
+#         return {"status": "ok", "channels": payload.channels}
+#     except Exception as e:
+#         logger.error(f"Error in trigger_capture: {e}")
+#         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+
+
 @app.post("/capture/")
-async def trigger_capture(payload : CapturePayload):
-    global manual_capture_flags
-    """Manually trigger image capture on one or more camera channels.
+async def trigger_capture(payload: CapturePayload):
+    global manual_capture_flags, camera_comments
 
-    Args:
-        payload (CapturePayload): Payload containing list of channels to capture.
-
-    Returns:
-        dict: Response with status and channels where capture was triggered.
-
-    Raises:
-        500 Internal Server Error: If an error occurs during capture triggering.
-    """
     try:
-        # For every channel we have passed in.
-        for ch in payload.channels:
-            #Check to see if it extists in the list
-            # Ensure that it is a string, because manual_capture_flags is {"1": event}
-            if str(ch) in manual_capture_flags:
-                manual_capture_flags[str(ch)].set()
-                logger.info(f"Manual capture triggered for channel {ch}")
-            else:
-                logger.warning(f"Channel {ch} not found")
+        with comment_lock:
+            for ch in payload.channels:
+                ch_str = str(ch)
+                if ch_str in manual_capture_flags:
+                    # Assign comment if provided comments for each channel
+                    logger.debug(f"Payload comments: {payload.comments}, Payload comment: {payload.comment}")
+
+                    if payload.comments and ch_str in payload.comments:
+                        camera_comments[ch_str] = payload.comments[ch_str]
+                        logger.info("individual comments")
+                        logger.info(camera_comments)
+
+                    # Assign a global comment to all cameras
+                    elif payload.comment:
+                        camera_comments[ch_str] = payload.comment
+                        logger.info("global comment")
+                        logger.info(camera_comments)
+
+                    # Trigger manual capture
+                    manual_capture_flags[ch_str].set()
+                    logger.info(f"Manual capture triggered for channel {ch_str} "
+                                f"with comment: {camera_comments.get(ch_str)}")
+                else:
+                    logger.warning(f"Channel {ch} not found")
 
         return {"status": "ok", "channels": payload.channels}
     except Exception as e:
