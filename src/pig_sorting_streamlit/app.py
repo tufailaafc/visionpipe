@@ -93,7 +93,24 @@ def camera_select():
     # The camera_id must have the corresponding nvr port number it is connected to in the id, 
     # if is port 3 then it must only have the number 3 in it.
     # This allows us to parse it easier.
-    camera_ids = st.multiselect("Choose cameras", ["cam1HighDef", "cam1LowDef","cam3HighDef", "cam3LowDef"])
+    # camera_ids = st.multiselect("Choose cameras", ["cam1HighDef", "cam1LowDef","cam3HighDef", "cam3LowDef"])
+    response = requests.post(f"{MIDDLEWARE_URL}/api/v1/collector/channels", 
+                            json={"username": None,
+                                "password": None,
+                                "nvr_ip": None})
+    camera_ids = {}
+    # st.json(response.json())
+    res_val_list = response.json()["channel_ids"]
+    # for res in response.json().values():
+    # st.dataframe(res_val_list)
+    for res in res_val_list:
+        camera_ids[f"cam{res}HighDef"] = res 
+        camera_ids[f"cam{res}LowDef"] = res 
+
+    camera_ids = st.multiselect("Choose cameras", camera_ids)
+    
+
+
     return camera_ids
     # if camera_id and st.button("Connect to selected cameras"):
     #     for cam in camera_id:
@@ -147,11 +164,17 @@ def trigger_picture(camera_ids, models_to_chain, return_annotated, confidence):
         if camera_ids:
             channels = parse_channels(camera_ids)
             print(f"channels: {channels}")
+
+            #test declaration TOBE GOTTEN RID OF
+            comment = "Testing for global comments"
+            comments = None
             
             try:
                 response = requests.post(
                     f"{MIDDLEWARE_URL}/api/v1/collector/capture",
-                    json={"channels": channels}
+                    json={"channels": channels,
+                          "comment": comment,
+                          "comments": comments}
                 )
                 response.raise_for_status()
                 st.success(f"Took picture(s) for channels: {channels}")
@@ -397,3 +420,6 @@ display_prediction()
 
 
 # display_prediction()
+
+
+

@@ -17,11 +17,13 @@ RTSP_BASE_CONNECTION = f"rtsp://{NVR_USERNAME}:{NVR_PASSWORD}@{NVR_IP}:554/cam/r
 # if is port 3 then it must only have the number 3 in it.
 # This allows us to parse it easier.
 CAMERAS = {
-    "cam1HighDef": f"{RTSP_BASE_CONNECTION}channel=1&subtype=0&tcp",
-    "cam1LowDef": f"{RTSP_BASE_CONNECTION}channel=1&subtype=1&tcp",
-    "cam3HighDef": f"{RTSP_BASE_CONNECTION}channel=3&subtype=0&tcp",
-    "cam3LowDef": f"{RTSP_BASE_CONNECTION}channel=3&subtype=1&tcp",
+    # "cam1HighDef": f"{RTSP_BASE_CONNECTION}channel=1&subtype=0&tcp",
+    # "cam1LowDef": f"{RTSP_BASE_CONNECTION}channel=1&subtype=1&tcp",
+    # "cam3HighDef": f"{RTSP_BASE_CONNECTION}channel=3&subtype=0&tcp",
+    # "cam3LowDef": f"{RTSP_BASE_CONNECTION}channel=3&subtype=1&tcp",
 }
+
+
 
 def open_stream(rtsp_url):
     """Open and maintain a connection to an RTSP stream.
@@ -108,8 +110,23 @@ def stream(camera_id):
         werkzeug.exceptions.NotFound: If the camera ID is not registered.
     """
     #Check to see if the camera is registered
-    if camera_id not in CAMERAS:
-        return f"Unknown camera ID: {camera_id}", 404
+    # if camera_id not in CAMERAS:
+    #     return f"Unknown camera ID: {camera_id}", 404
+
+
+
+    # camera_id = "cam1HighDef"
+    high_def = "HighDef"
+    # low_def = "LowDef"
+    channel_num = "".join(filter(str.isdigit, camera_id))
+    if high_def in camera_id:
+        CAMERAS[camera_id] = f"{RTSP_BASE_CONNECTION}channel={channel_num}&subtype=0&tcp"
+    else:
+        CAMERAS[camera_id] = f"{RTSP_BASE_CONNECTION}channel={channel_num}&subtype=1&tcp"
+
+
+        
+
     #Then get yield the frames from the rtsp stream
     rtsp_url = CAMERAS[camera_id]
     return Response(gen_frames(rtsp_url),

@@ -84,7 +84,6 @@ app.add_middleware(
 
 
 DATA_INTAKE_URL = "http://data-intake:8301" 
-PIG_SORTING_API_URL = ""
 MODEL_TRAINING_URL = "http://model-training:8401/training/stream"
 MODEL_DEPLOY_URL = "http://model-deploy:8601"
 #DEFAULT_MODELS = ["app/models/Proper_Test/70 epochs medium run3/weights/best.pt","app/models/Proper_Test/70 epochs medium run3/weights/last.pt"]
@@ -96,6 +95,8 @@ DEFAULT_MODEL_PATHS = ["/app/models/Proper_Test/70 epochs medium run3/weights/be
 # A list of our cameras
 class CaptureRequest(BaseModel):
     channels: list[int]
+    comment: str | None = None
+    comments: dict[int, str] | None = None
 
 
 
@@ -144,6 +145,18 @@ class SavePredictionRequest(BaseModel):
     detections: List[Dict[str, Any]]      # bounding boxes, confidences, etc.
     metadata: Optional[Dict[str, Any]] = None
     ImageName: str = None
+
+class ChannelsRequest(BaseModel):
+    """Request model for retrieving active and connected camera ids.
+
+    Attributes:
+        username (str): The username to log into the NVR.
+        password (str): The password to log into the NVR.
+        nvr_ip (str): The ip to log into the NVR.
+    """
+    username: Optional[str] = None
+    password: Optional[str] = None
+    nvr_ip: Optional[str] = None
 
 
 CHAIN_PREDICTION_URL = f"{MODEL_DEPLOY_URL}/model/predict/chain"
@@ -784,7 +797,9 @@ async def capture(request: CaptureRequest):
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{DATA_INTAKE_URL}/capture/",
-                json={"channels": request.channels}
+                json={"channels": request.channels,
+                      "comment": request.comment,
+                      "comments": request.comments}
             )
             return response.json()
     except Exception as e:
@@ -1003,4 +1018,15 @@ async def save_prediction(request: SavePredictionRequest):
 #     except Exception as e:
 #         print(f"[ERROR] MongoDB watcher failed: {e}")
 
+@app.post("/api/v1/collector/channels")
+async def channels(request: ChannelsRequest):
+    logger.info(f"Reached pig-sorting-api channel request")
+    async with httpx.AsyncClient() as client:
+        response = await client.post(f"{DATA_INTAKE_URL}/channels",
+                    json={"username": request.username,
+                        "password": request.password,
+                        "nvr_ip": request.nvr_ip})
+        
+        logger.info(f"Returning values inside of pig-sorting-api: {response.json()}")
+        return response.json()
 

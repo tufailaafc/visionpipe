@@ -63,6 +63,18 @@ class FrameIntervalRequest(BaseModel):
     channel: int
     interval: int
 
+class ChannelsRequest(BaseModel):
+    """Request model for retrieving active and connected camera ids.
+
+    Attributes:
+        username (str): The username to log into the NVR.
+        password (str): The password to log into the NVR.
+        nvr_ip (str): The ip to log into the NVR.
+    """
+    username: str | None = None
+    password: str | None = None
+    nvr_ip: str | None = None
+
 
 
 class ImageMetadata(BaseModel):
@@ -380,9 +392,11 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
             timestamp_str = dt_obj.strftime("%Y:%m:%d %H:%M:%S")
             if manual_capture_flags[channel].is_set():
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}_manual.jpg")
+                print(f"Saved image to: {frame_filename}")
                 trigger_method = "manual"
             else:
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}.jpg")
+                print(f"Saved image to: {frame_filename}")
                 trigger_method = "automatic"
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
@@ -390,13 +404,14 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
             
             
             user_comment = None
+            user_description = None
             with comment_lock:
                 if str(channel) in camera_comments:
                     user_comment = camera_comments[str(channel)]
                     del camera_comments[str(channel)]  # consume once
 
 
-            SavePictureData(frame_filename, channel,"", dt_obj, user_comment or "No comment", "ceiling",trigger_method)
+            SavePictureData(frame_filename, channel,"", dt_obj, user_comment or "No comment", user_description or "No Description",trigger_method)
 
             manual_capture_flags[channel].clear()
 
@@ -739,6 +754,36 @@ async def set_frame_interval(request: FrameIntervalRequest):
         logger.error(f"Error in set_frame_interval: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+
+
+
+
+@app.post("/channels")
+async def channels(request: ChannelsRequest):
+    """Channel request endpoint will return a set of currently connected channels.
+
+    Returns:
+        set: ["1","5","7","12"...] set of camera/channel ids.
+
+    Raises:
+        500 Internal Server Error: If channel request fails.
+    """
+    try:
+        # If not specified we will use the values in the .env file
+        if request.username is None:
+            username = os.getenv("NVR_USERNAME")
+        if request.password is None:
+            password = os.getenv("NVR_PASSWORD")
+        if request.nvr_ip is None:
+            nvr_ip = os.getenv("NVR_IP")
+
+        logger.debug("The channel request end point has been hit.")
+        camera_ids = getCameraChannels(username, password, nvr_ip)
+
+        logger.debug(f"data-intake camera ids: {camera_ids}")
+        return {"channel_ids": list(camera_ids)}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 @app.get("/health")
