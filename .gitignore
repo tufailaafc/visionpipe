@@ -6,6 +6,14 @@ data/processed
 data/raw
 data/videos
 src/.env
+src/deep_lab_cut/PorkAnalysis-WG-2025-12-10/labeled-data
+src/deep_lab_cut/PorkAnalysis-WG-2025-12-10/training-datasets
+src/deep_lab_cut/PorkAnalysis-WG-2025-12-10/videos
+src/deep_lab_cut/YOLOv11/No Label Images
+src/deep_lab_cut/YOLOv11/yolo_images
+src/deep_lab_cut/YOLOv11/yolo_labels
+src/deep_lab_cut/YOLOv11/training_dataset
+src/deep_lab_cut/PorkAnalysis-WG-2025-12-10/evaluation-results-pytorch/iteration-0/PorkAnalysisDec10-trainset95shuffle1
 .env
 src/pig-sorting-streamlit/.streamlit/secrets.toml
 *packages

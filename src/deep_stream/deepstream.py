@@ -13,6 +13,13 @@ import math
 import datetime
 # import pyds
 #import platform
+import logging
+
+logger = logging.getLogger()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 
 
@@ -26,13 +33,13 @@ def add_rtsp_source(rtsp_url):
     global source_index
     # This will help to ensure no memory or other errors by having too many streams
     if source_index >= MAX_NUM_SOURCES:
-        print("Max number of sources reached.")
+        logger.warning("Max number of sources reached.")
         return
 
-    print(f"Adding source #{source_index}: {rtsp_url}")
+    logger.info(f"Adding source #{source_index}: {rtsp_url}")
     source_bin = create_uridecode_bin(source_index, rtsp_url)
     if not source_bin:
-        print(f"Failed to create source bin for {rtsp_url}")
+        logger.error(f"Failed to create source bin for {rtsp_url}")
         return
 
     pipeline.add(source_bin)
@@ -112,9 +119,9 @@ def new_pad_probe(pad, info, user_data):
     caps = pad.get_current_caps()
     if print_flag:
         if caps:
-            print("🔍 CAPS DEBUG:", caps.to_string())
+            logger.debug("CAPS DEBUG:", caps.to_string())
         else:
-            print("⚠️ No caps found on pad")
+            logger.debug("No caps found on pad")
     return Gst.PadProbeReturn.OK
 
 infer_frame_count = {}
@@ -135,7 +142,7 @@ def pgie_frame_probe(pad, info, user_data):
             pts = buf.pts
             dts = buf.dts
             size = buf.get_size()
-            print(f"[PGIE DEBUG] Frame {infer_frame_count[pad_name]} at pad {pad_name}, PTS={pts}, DTS={dts}, Size={size}")
+            logger.debug(f"[PGIE DEBUG] Frame {infer_frame_count[pad_name]} at pad {pad_name}, PTS={pts}, DTS={dts}, Size={size}")
 
     return Gst.PadProbeReturn.OK
 
@@ -179,13 +186,13 @@ def pad_debug_probe_limited(pad, info, user_data):
             pts = buf.pts
             dts = buf.dts
             size = buf.get_size()
-            print(f"[PAD DEBUG] Pad: {pad_name}, PTS: {pts}, DTS: {dts}, Size: {size}")
+            logger.debug(f"[PAD DEBUG] Pad: {pad_name}, PTS: {pts}, DTS: {dts}, Size: {size}")
 
             caps = pad.get_current_caps()
             if caps:
-                print(f"[PAD DEBUG] Caps: {caps.to_string()}")
+                logger.debug(f"[PAD DEBUG] Caps: {caps.to_string()}")
         except Exception as e:
-            print(f"Pad debug failed: {e}")
+            logger.error(f"Pad debug failed: {e}")
 
     return Gst.PadProbeReturn.OK
 
@@ -193,25 +200,25 @@ def pad_debug_probe_limited(pad, info, user_data):
 # Lets us know which elements are created and how they are linked
 def print_pipeline_status(pipeline):
     """Prints each element and its pads, and checks linking status."""
-    print("Pipeline Elements and Pads:")
+    logger.debug("Pipeline Elements and Pads:")
 
     for elem in pipeline.iterate_elements():
-        print(f"Element: {elem.get_name()} ({elem.get_factory().get_name()})")
+        logger.debug(f"Element: {elem.get_name()} ({elem.get_factory().get_name()})")
         for pad in elem.iterate_pads():
             pad_name = pad.get_name()
             pad_caps = pad.get_current_caps()
             peer_pad = pad.get_peer()
             peer_name = peer_pad.get_name() if peer_pad else "None"
-            print(f"  Pad: {pad_name}, Peer: {peer_name}, Caps: {pad_caps.to_string() if pad_caps else 'None'}")
+            logger.debug(f"  Pad: {pad_name}, Peer: {peer_name}, Caps: {pad_caps.to_string() if pad_caps else 'None'}")
 
-    print("\nChecking link status:")
+    logger.debug("Checking link status:")
     for elem in pipeline.iterate_elements():
         for pad in elem.iterate_pads():
             peer_pad = pad.get_peer()
             if peer_pad:
-                print(f"{elem.get_name()}:{pad.get_name()} -> {peer_pad.get_parent_element().get_name()}:{peer_pad.get_name()}")
+                logger.debug(f"{elem.get_name()}:{pad.get_name()} -> {peer_pad.get_parent_element().get_name()}:{peer_pad.get_name()}")
             else:
-                print(f"{elem.get_name()}:{pad.get_name()} -> Not linked")
+                logger.debug(f"{elem.get_name()}:{pad.get_name()} -> Not linked")
 
 ##############################################
 
@@ -220,7 +227,7 @@ def print_pipeline_status(pipeline):
 
 
 def decodebin_child_added(child_proxy, Object, name: str, user_data):
-    print("Decodebin child added:", name, "\n")
+    logger.debug("Decodebin child added:", name)
     if(name.find("decodebin") != -1):
         Object.connect("child-added", decodebin_child_added, user_data)
 
@@ -231,24 +238,24 @@ def decodebin_child_added(child_proxy, Object, name: str, user_data):
         # Attach probe to decoder's src pad for debugging rtsp input stream, also stops it from breaking for some reason.
         decoder_src_pad = Object.get_static_pad("src")
         if decoder_src_pad:
-            print("🧷 Attaching pad probe to decoder's src pad")
+            logger.debug("Attaching pad probe to decoder's src pad")
             decoder_src_pad.add_probe(Gst.PadProbeType.BUFFER, new_pad_probe, None)
 
             
 
 def cb_newpad(decodebin, pad, data):
     global streammux
-    print("In cb_newpad\n")
+    logger.debug("In cb_newpad")
     caps = pad.get_current_caps()
     gststruct = caps.get_structure(0)
     gstname = gststruct.get_name()
 
-    print("gstname=", gstname)
+    logger.debug("gstname=", gstname)
 
     if(gstname.find("video") != -1):
         source_id = data
         pad_name = "sink_%u" % source_id
-        print(f"Requesting pad: {pad_name}")
+        logger.debug(f"Requesting pad: {pad_name}")
         
         sinkpad = streammux.request_pad_simple(pad_name)
         if not sinkpad:
@@ -257,19 +264,20 @@ def cb_newpad(decodebin, pad, data):
             
         link_ret = pad.link(sinkpad)
         if link_ret == Gst.PadLinkReturn.OK:
-            print("✅ Decodebin linked to pipeline")
+            logger.debug("Decodebin linked to pipeline")
         else:
-            sys.stderr.write(f"❌ Failed to link decodebin to pipeline: {link_ret}\n")
+            logger.error(f"Failed to link decodebin to pipeline: {link_ret}")
 
 
 #This will create a bin that contains our sources
 def create_uridecode_bin(index, filename):
     global g_source_id_list
-    print("Creating uridecodebin for [%s]" % filename)
+    logger.debug("Creating uridecodebin for [%s]" % filename)
 
     g_source_id_list[index] = index
     bin_name = "source-bin-%02d" % index
-    print(bin_name)
+    logger.debug(bin_name)
+
 
     bin = Gst.ElementFactory.make("uridecodebin", bin_name)
     if not bin:
@@ -294,30 +302,32 @@ def stop_release_source(source_id):
     state_return = g_source_bin_list[source_id].set_state(Gst.State.NULL)
 
     if state_return == Gst.StateChangeReturn.SUCCESS:
-        print("STATE CHANGE SUCCESS\n")
+        logger.debug(print("STATE CHANGE SUCCESS"))
         pad_name = "sink_%u" % source_id
-        print(pad_name)
+        logger.debug(pad_name)
+
 
         sinkpad = streammux.get_static_pad(pad_name)
         sinkpad.send_event(Gst.Event.new_flush_stop(False))
         streammux.release_request_pad(sinkpad)
-        print("STATE CHANGE SUCCESS\n")
+        logger.debug("STATE CHANGE SUCCESS")
 
         pipeline.remove(g_source_bin_list[source_id])
         source_id -= 1
         g_num_sources -= 1
 
     elif state_return == Gst.StateChangeReturn.FAILURE:
-        print("STATE CHANGE FAILURE\n")
+        logger.error("STATE CHANGE FAILURE")
+
 
     elif state_return == Gst.StateChangeReturn.ASYNC:
         state__return = g_source_bin_list[source_id].get_state(Gst.CLOCK_TIME_NONE)
         pad_name = "sink_%u" % source_id
-        print(pad_name)
+        logger.debug(pad_name)
         sinkpad = streammux.get_static_pad(pad_name)
         sinkpad.send_event(Gst.Event.new_flush_stop(False))
         streammux.release_request_pad(sinkpad)
-        print("STATE CHANGE ASYNC\n")
+        logger.debug("STATE CHANGE ASYNC")
         pipeline.remove(g_source_bin_list[source_id])
         source_id -= 1
         g_num_sources -= 1
@@ -337,7 +347,7 @@ def delete_sources(data):
     # If there are no more sources then quit
     if (g_num_sources == 0):
         loop.quit()
-        print("All sources stopped quitting")
+        logger.info("All sources stopped quitting")
         return False
 
 
@@ -352,7 +362,7 @@ def add_sources(data):
 
     # Update our list so that we know this source is enabled
     g_source_enabled[source_id] = True
-    print("Calling Start %d " % source_id)
+    logger.debug("Calling Start %d " % source_id)
 
     # create a bin that contains our source
     source_bin = create_uridecode_bin(source_id, uri)
@@ -371,21 +381,21 @@ def add_sources(data):
 
     # Evaluate if it was successful
     if state_return == Gst.StateChangeReturn.SUCCESS:
-        print("STATE CHANGE SUCCESS\n")
+        logger.debug("STATE CHANGE SUCCESS")
         source_id += 1
     elif state_return == Gst.StateChangeReturn.FAILURE:
-        print("STATE CHANGE FAILURE\n")
+        logger.error("STATE CHANGE FAILURE")
     elif state_return == Gst.StateChangeReturn.ASYNC:
         state_return = g_source_bin_list[source_id].get_state(Gst.CLOCK_TIME_NONE)
         source_id += 1
     elif state_return == Gst.StateChangeReturn.NO_PREROLL:
-        print("STATE CHANGE NO PREROLL\n")
+        logger.debug("STATE CHANGE NO PREROLL")
 
     g_num_sources += 1
 
     #To-Do add some proper logic to prevent adding to many sources
     if (g_num_sources == MAX_NUM_SOURCES):
-        print(f"Over max number of sources {g_num_sources}")
+        logger.warning(f"Over max number of sources {g_num_sources}")
 
     return True
 
@@ -399,17 +409,17 @@ def bus_call(bus, message, loop):
 
     # If we recieve and end of stream we will quit
     if t == Gst.MessageType.EOS:
-        sys.stdout.write("End-of-stream\n")
+        logger.info("End-of-stream\n")
         loop.quit()
 
     elif t == Gst.MessageType.WARNING:
         err, debug = message.parse_warning()
-        sys.stderr.write("Warning: %s: %s: \n" % (err, debug))
+        logger.error("Warning: %s: %s: \n" % (err, debug))
 
     # If we recieve a error we will also quit
     elif t == Gst.MessageType.ERROR:
         err, debug = message.parse_error()
-        sys.stderr.write("Error: %s: %s: \n" % (err, debug))
+        logger.error("Error: %s: %s: \n" % (err, debug))
         loop.quit()
 
     elif t == Gst.MessageType.ELEMENT:
@@ -418,10 +428,10 @@ def bus_call(bus, message, loop):
         if struct is not None and struct.has_name("stream-eos"):
             parsed, stream_id = struct.get_uint("stream-id")
             if parsed:
-                print("Got EOS from stream %d" % stream_id)
+                logger.info("Got EOS from stream %d" % stream_id)
                 g_eos_list[stream_id] = True
         elif struct.has_name("perf"):
-            print("PERF EVENT: ", struct.to_string())
+            logger.info("PERF EVENT: ", struct.to_string())
     return True
 
 def main(args):
@@ -455,19 +465,19 @@ def main(args):
     Gst.debug_set_default_threshold(3)
 
     # Create Pipeline elementis_live
-    print("Creating Pipeline \n")
+    logger.debug("Creating Pipeline ")
     pipeline = Gst.Pipeline()
     is_live = False
 
     if not pipeline:
-        sys.stderr.write("Unable to create pipeline \n")
+        logger.error("Unable to create pipeline")
         sys.exit(1)
 
     # Create nvstreammux to form batches from one or more sources
-    print("Creating streammux \n")
+    logger.debug("Unable to create pipeline")
     streammux = Gst.ElementFactory.make("nvstreammux", "Stream-muxer")
     if not streammux:
-        sys.stderr.write("Unable to create NvStreamMux \n")
+        logger.error("Unable to create NvStreamMux")
         sys.exit(1)
 
     streammux.set_property("batched-push-timeout", 40000)
@@ -482,14 +492,14 @@ def main(args):
     # add sources from command line
     uri = args[1]
     for i in range(num_sources):
-        print("Creating source_bin ", i, " \n")
+        logger.debug("Creating source_bin ", i)
         uri_name = args[i+1]
         if uri_name.find("rtsp://") == 0:
             is_live = True
 
         source_bin = create_uridecode_bin(i, uri_name)
         if not source_bin:
-            sys.stderr.write("Failed to create source bin, Exiting. \n")
+            logger.error("Failed to create source bin, Exiting.")
             sys.exit(1)
 
         g_source_bin_list[i] = source_bin
@@ -498,10 +508,10 @@ def main(args):
     g_num_sources = num_sources
 
     # Create primary inference engine, this will determine if there are any instances of the class in the incoming source
-    print("Creating Pgie \n")
+    logger.debug("Creating Pgie")
     pgie = Gst.ElementFactory.make("nvinfer", "primary-inference")
     if not pgie:
-        sys.stderr.write("Unable to create Pgie \n")
+        logger.error("Unable to create Pgie")
         sys.exit(1)
     ########################################
     # pgie_sink_pad = pgie.get_static_pad("src")  # or "sink", see below
@@ -513,83 +523,83 @@ def main(args):
 
 
     # Create tracker, this will track the object as it moves in the video stream
-    print("Creating nvtracker \n")
+    logger.debug("Creating nvtracker")
     tracker = Gst.ElementFactory.make("nvtracker", "tracker")
     if not tracker:
-        sys.stderr.write("Unable to create nvtracker \n")
+        logger.error("Unable to create nvtracker")
         sys.exit(1)
 
     # Create tiler, this will configure the 2d tile for new sources being added
-    print("Creating tiler \n")
+    logger.debug("Creating tiler")
     tiler = Gst.ElementFactory.make("nvmultistreamtiler", "nvtiler")
     if not tiler:
-        sys.stderr.write("Unable to create tiler \n")
+        logger.error("Unable to create tiler")
         sys.exit(1)
 
     # Create nvvideoconvert, will do scaling  cropping and video color format conversion
-    print("Creating nvvidconv \n")
+    logger.debug("Creating nvvidconv")
     nvvideoconvert = Gst.ElementFactory.make("nvvideoconvert", "convertor")
     if not nvvideoconvert:
-        sys.stderr.write("Unable to create nvvidconv \n")
+        logger.error("Unable to create nvvidconv")
         sys.exit(1)
 
     # Create nvdsosd, this will handle drawing bounding boxes around the region of intrest
-    print("Creating nvosd \n")
+    logger.debug("Creating nvosd")
     nvosd = Gst.ElementFactory.make("nvdsosd", "onscreendisplay")
     if not nvosd:
-        sys.stderr.write("Unable to create nvosd \n")
+        logger.error("Unable to create nvosd")
         sys.exit(1)
 
     # Create tee for splitting output, so we can save to file and display the output
-    print("Creating tee \n")
+    logger.debug("Creating tee")
     tee = Gst.ElementFactory.make("tee", "tee")
     if not tee:
-        sys.stderr.write("Unable to create tee \n")
+        logger.error("Unable to create tee \n")
         sys.exit(1)
 
     # Create queues
     queue_display = Gst.ElementFactory.make("queue", "queue-display")
     queue_file = Gst.ElementFactory.make("queue", "queue-file")
     if not queue_display or not queue_file:
-        sys.stderr.write("Unable to create queues \n")
+        logger.error("Unable to create queues")
         sys.exit(1)
 
     # Create display sink (fakesink for now)
     display_sink = Gst.ElementFactory.make("fakesink", "display-sink")
     if not display_sink:
-        sys.stderr.write("Unable to create display sink \n")
+        logger.error("Unable to create display sink")
         sys.exit(1)
     display_sink.set_property("sync", False)
 
 
     ################################ File output elements########################################
     #Handles scaling cropping etc
-    print("Creating nvvidconv2 \n")
+    logger.debug("Creating nvvidconv2")
     nvvideoconvert2 = Gst.ElementFactory.make("nvvideoconvert", "convertor2")
     if not nvvideoconvert2:
-        sys.stderr.write("Unable to create nvvidconv2 \n")
+        logger.error("Unable to create nvvidconv2")
         sys.exit(1)
     
 
     #Ensures that the stream is in the correct format
-    print("Creating capsfilter \n")
+    logger.debug("Creating capsfilter")
     capsfilter = Gst.ElementFactory.make("capsfilter", "capsfilter")
     if not capsfilter:
-        sys.stderr.write("Unable to create capsfilter \n")
+        logger.error("Unable to create capsfilter")
         sys.exit(1)
     # Convert NVMM to system memory for encoder compatibility
     caps = Gst.Caps.from_string("video/x-raw, format=I420")
     capsfilter.set_property("caps", caps)
 
     # Encodes it into a format that can be saved into a file
-    print("Creating encoder (x264enc) \n")
+    logger.debug("Creating encoder (x264enc)")
     encoder = Gst.ElementFactory.make("x264enc", "encoder")
     if not encoder:
         # Fallback to software encoder if x264enc not available
-        print("x264enc not available, trying avenc_h264")
+        logger.error("x264enc not available, trying avenc_h264")
         encoder = Gst.ElementFactory.make("avenc_h264", "encoder")
         if not encoder:
-            sys.stderr.write("Unable to create any H.264 encoder \n")
+            logger.error("Unable to create any H.264 encoder")
             sys.exit(1)
     
     # Set encoder properties for better performance
@@ -601,22 +611,23 @@ def main(args):
     else:
         encoder.set_property("bitrate", 2000000)
 
-    print("Creating code parser (h264parse) \n")
+    logger.debug("Creating code parser (h264parse)")
     codeparser = Gst.ElementFactory.make("h264parse", "h264-parse")
     if not codeparser:
-        sys.stderr.write("Unable to create h264parse \n")
+        logger.error("Unable to create h264parse")
         sys.exit(1)
 
-    print("Creating container \n")
+
+    logger.debug("Creating container")
     container = Gst.ElementFactory.make("qtmux", "qtmux")
     if not container:
-        sys.stderr.write("Unable to create container \n")
+        logger.error("Unable to create container")
         sys.exit(1)
 
-    print("Creating file sink \n")
+    logger.info("Creating file sink")
     file_sink = Gst.ElementFactory.make("filesink", "filesink")
     if not file_sink:
-        sys.stderr.write("Unable to create file sink \n")
+        logger.error("Unable to create file sink")
         sys.exit(1)
     # This will set where we output our file to, and what we call it.
     timestamp = datetime.datetime.now().strftime("%Y:%m:%d %H:%M:%S")
@@ -625,14 +636,14 @@ def main(args):
     file_sink.set_property("async", 0)
 
     if is_live:
-        print("At least one of the sources is live.")
+        logger.info("At least one of the sources is live.")
         streammux.set_property("live-source", 1)
 
     # Set pgie properties
     pgie.set_property("config-file-path", PGIE_CONFIG_FILE)
     pgie_batch_size = pgie.get_property("batch-size")
     if(pgie_batch_size < MAX_NUM_SOURCES):
-        print("WARNING: Overriding infer-config batch-size", pgie_batch_size, " with number of sources ", num_sources, "\n")
+        logger.error("WARNING: Overriding infer-config batch-size", pgie_batch_size, " with number of sources ", num_sources)
     pgie.set_property("batch-size", MAX_NUM_SOURCES)
     pgie.set_property("gpu_id", GPU_ID)
 
@@ -651,7 +662,7 @@ def main(args):
     nvvideoconvert2.set_property("gpu_id", GPU_ID)
     
 
-    print("Adding elements to Pipeline \n")
+    logger.debug("Adding elements to Pipeline")
     elements = [pgie, tiler, nvvideoconvert, nvosd, tee, queue_display, queue_file,
                 display_sink, nvvideoconvert2, capsfilter, encoder, codeparser, container, file_sink]
     
@@ -659,79 +670,79 @@ def main(args):
         pipeline.add(element)
 
     # Link main pipeline, this determines how the order in which the information flows
-    print("Linking elements in the pipeline \n")
+    logger.debug("Linking elements in the pipeline")
     
     if not streammux.link(pgie):
-        sys.stderr.write("Failed to link streammux -> pgie\n")
+        logger.error("Failed to link streammux -> pgie\n")
         sys.exit(1)
         
     if not pgie.link(tiler):
-        sys.stderr.write("Failed to link pgie -> tiler\n")
+        logger.error("Failed to link pgie -> tiler\n")
         sys.exit(1)
         
     if not tiler.link(nvvideoconvert):
-        sys.stderr.write("Failed to link tiler -> nvvideoconvert\n")
+        logger.error("Failed to link tiler -> nvvideoconvert")
         sys.exit(1)
         
     if not nvvideoconvert.link(nvosd):
-        sys.stderr.write("Failed to link nvvideoconvert -> nvosd\n")
+        logger.error("Failed to link nvvideoconvert -> nvosd")
         sys.exit(1)
 
     if not nvosd.link(tee):
-        sys.stderr.write("Failed to link nvosd -> tee\n")
+        logger.error("Failed to link nvosd -> tee")
         sys.exit(1)
 
     # Branch 1: Display
     tee_src_pad_display = tee.get_request_pad("src_%u")
     queue_display_sink_pad = queue_display.get_static_pad("sink")
     if tee_src_pad_display.link(queue_display_sink_pad) != Gst.PadLinkReturn.OK:
-        sys.stderr.write("Failed to link tee -> queue_display\n")
+        logger.error("Failed to link tee -> queue_display")
         sys.exit(1)
     
     if not queue_display.link(display_sink):
-        sys.stderr.write("Failed to link queue_display -> display_sink\n")
+        logger.error("Failed to link queue_display -> display_sink")
         sys.exit(1)
 
     # Branch 2: File output
     tee_src_pad_file = tee.get_request_pad("src_%u")
     queue_file_sink_pad = queue_file.get_static_pad("sink")
     if tee_src_pad_file.link(queue_file_sink_pad) != Gst.PadLinkReturn.OK:
-        sys.stderr.write("Failed to link tee -> queue_file\n")
+        logger.error("Failed to link tee -> queue_file")
         sys.exit(1)
     
     if not queue_file.link(nvvideoconvert2):
-        sys.stderr.write("Failed to link queue_file -> nvvideoconvert2\n")
+        logger.error("Failed to link queue_file -> nvvideoconvert2")
         sys.exit(1)
         
     if not nvvideoconvert2.link(capsfilter):
-        sys.stderr.write("Failed to link nvvideoconvert2 -> capsfilter\n")
+        logger.error("Failed to link nvvideoconvert2 -> capsfilter")
         sys.exit(1)
         
     if not capsfilter.link(encoder):
-        sys.stderr.write("Failed to link capsfilter -> encoder\n")
+        logger.error("Failed to link capsfilter -> encoder")
         sys.exit(1)
         
     if not encoder.link(codeparser):
-        sys.stderr.write("Failed to link encoder -> codeparser\n")
+        logger.error("Failed to link encoder -> codeparser")
         sys.exit(1)
 
     # Link to container using request pad
     sinkpad_video = container.get_request_pad("video_0")
     if not sinkpad_video:
-        sys.stderr.write("Unable to get video sink pad from qtmux\n")
+        logger.error("Unable to get video sink pad from qtmux")
         sys.exit(1)
         
     srcpad_parser = codeparser.get_static_pad("src")
     if not srcpad_parser:
-        sys.stderr.write("Unable to get src pad from parser\n")
+        logger.error("Unable to get src pad from parser")
         sys.exit(1)
         
     if srcpad_parser.link(sinkpad_video) != Gst.PadLinkReturn.OK:
-        sys.stderr.write("Failed to link parser -> qtmux\n")
+        logger.error("Failed to link parser -> qtmux")
         sys.exit(1)
 
     if not container.link(file_sink):
-        sys.stderr.write("Failed to link qtmux -> filesink\n")
+        logger.error("Failed to link qtmux -> filesink")
         sys.exit(1)
 
 
@@ -748,29 +759,29 @@ def main(args):
 
     osdsinkpad = nvosd.get_static_pad("sink")
     if not osdsinkpad:
-        sys.stderr.write("Unable to get the sinkpad of nvosd \n")
+        logger.error("Unable to get the sinkpad of nvosd")
 
     # Set source bins to PLAYING state
-    print("Setting source bins to PLAYING")
+    logger.debug("Setting source bins to PLAYING")
     for i in range(num_sources):
         if g_source_bin_list[i]:
             ret = g_source_bin_list[i].set_state(Gst.State.PLAYING)
-            print(f"Source bin {i} state change: {ret}")
+            logger.debug(f"Source bin {i} state change: {ret}")
 
     # Set pipeline to PAUSED first
-    print("Setting pipeline to PAUSED")
+    logger.info("Setting pipeline to PAUSED")
     ret = pipeline.set_state(Gst.State.PAUSED)
     if ret == Gst.StateChangeReturn.FAILURE:
-        sys.stderr.write("Unable to set pipeline to PAUSED\n")
+        logger.error("Unable to set pipeline to PAUSED")
         sys.exit(1)
 
     # Wait for PAUSED state
     ret, state, pending = pipeline.get_state(10 * Gst.SECOND)
     if ret == Gst.StateChangeReturn.FAILURE:
-        sys.stderr.write("Failed to get pipeline state\n")
+        logger.error("Failed to get pipeline state")
         sys.exit(1)
     
-    print(f"Pipeline PAUSED state: {state}, pending: {pending}")
+    logger.info(f"Pipeline PAUSED state: {state}, pending: {pending}")
 
     # Sync new elements with parent
     for element in [tee, queue_display, queue_file, display_sink]:
@@ -778,27 +789,27 @@ def main(args):
             element.sync_state_with_parent()
 
     # Now set to PLAYING
-    print("Setting pipeline to PLAYING")
+    logger.info("Setting pipeline to PLAYING")
     ret = pipeline.set_state(Gst.State.PLAYING)
     if ret == Gst.StateChangeReturn.FAILURE:
-        sys.stderr.write("Unable to set pipeline to PLAYING\n")
+        logger.error("Unable to set pipeline to PLAYING")
         sys.exit(1)
 
     # Wait for PLAYING state
-    print("Waiting for state change to PLAYING")
+    logger.debug("Waiting for state change to PLAYING")
     ret, state, pending = pipeline.get_state(10 * Gst.SECOND)
-    print(f"Final pipeline state: {state}, pending: {pending}, status: {ret}")
+    logger.debug(f"Final pipeline state: {state}, pending: {pending}, status: {ret}")
     
     if state == Gst.State.PLAYING and pending == Gst.State.VOID_PENDING:
-        print("✅ Pipeline is successfully PLAYING")
+        logger.info("Pipeline is successfully PLAYING")
         # Display the data sources
-        print("Now playing...")
+        logger.info("Now playing...")
         for i, source in enumerate(args):
             if(i != 0):
-                print(i, ": ", source)
+                logger.info(i, ": ", source)
         print_pipeline_status(pipeline)
     else:
-        print("❌ Pipeline failed to reach PLAYING state")
+        logger.error("Pipeline failed to reach PLAYING state")
         print_pipeline_status(pipeline)
         sys.exit(1)
 
@@ -808,7 +819,7 @@ def main(args):
         pass
 
     # Cleanup
-    print("Exiting app \n")
+    logger.info("Exiting app")
     pipeline.set_state(Gst.State.NULL)
 
 if __name__ == "__main__":

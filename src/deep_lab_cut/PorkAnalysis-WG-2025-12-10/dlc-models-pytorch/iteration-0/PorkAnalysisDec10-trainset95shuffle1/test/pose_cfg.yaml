@@ -1,0 +1,25 @@
+dataset: 
+  /home/nathaniel/Documents/GitHub/visionpipe/src/deep_lab_cut/PorkAnalysis-WG-2025-12-10
+dataset_type: multi-animal-imgaug
+num_joints: 8
+all_joints:
+- - 0
+- - 1
+- - 2
+- - 3
+- - 4
+- - 5
+- - 6
+- - 7
+all_joints_names:
+- Spine1
+- Shoulder_left
+- Shoulder_right
+- Center
+- Spine2
+- Hip_left
+- Hip_right
+- Tail_base
+net_type: resnet_50
+global_scale: 1
+scoremap_dir: test

@@ -270,7 +270,7 @@ async def send_to_chain_prediction(image_path: str):
         async with httpx.AsyncClient() as client:
             save_resp = await client.post("http://pig-sorting-api:8001/save_prediction", json=save_req.dict())
             save_resp.raise_for_status()
-            logger.info(f"✅ Prediction saved for {image_path}")
+            logger.info(f"Prediction saved for {image_path}")
 
     except Exception as e:
         logger.error(f"Failed to send chain prediction for {image_path}: {e}")
@@ -336,11 +336,11 @@ async def get_last_checkpoint():
     state = await db[STATE_COLLECTION].find_one({"_id": STATE_ID})
     if state and "last_check" in state:
         ts = state["last_check"]
-        logger.info(f"Resuming from saved checkpoint: {ts}")
+        logger.debug(f"Resuming from saved checkpoint: {ts}")
         return ts
     else:
         ts = datetime.utcnow() - timedelta(minutes=CATCHUP_WINDOW_MINUTES)
-        logger.info(f"No saved checkpoint, using catch-up: {ts}")
+        logger.debug(f"No saved checkpoint, using catch-up: {ts}")
         return ts
 
 
@@ -374,20 +374,20 @@ async def watch_mongo():
 
 
             # if there are new images then send them through the prediction engine.
-            logger.info("Trying to get metaData")
+            logger.debug("Trying to get metaData")
             cursor = db["metaData"].find({
                 "date_time": {"$gt": last_check}
             }).sort("date_time", 1)  # sort ascending to move checkpoint correctly
-            logger.info("Created cursor")
+            logger.debug("Created cursor")
             docs = await cursor.to_list(length=100)
-            logger.info("Got the documents")
+            logger.debug("Got the documents")
             if docs:
-                logger.info(f"Found {len(docs)} new docs since {last_check}")
+                logger.debug(f"Found {len(docs)} new docs since {last_check}")
 
             for doc in docs:
                 image_path = doc.get("image_path")
                 if image_path:
-                    logger.info(f"New image detected: {image_path}")
+                    logger.debug(f"New image detected: {image_path}")
                     await send_to_chain_prediction(image_path)
 
                 # update checkpoint after each doc
@@ -444,7 +444,7 @@ def image_to_base64(img: np.ndarray) -> str:
 @app.get("/api/v1/mongoData", response_class=JSONResponse)
 async def get_mongo_data():
     try:
-        logger.debug("🔍 /api/v1/mongoData/ endpoint hit")
+        logger.debug("/api/v1/mongoData/ endpoint hit")
         db_result = db["metaData"]
         result = db_result.find()
 
@@ -465,7 +465,7 @@ async def get_mongo_data():
 # Will send all of the images selected between certain times
 @app.post("/api/v1/images/", response_class=JSONResponse)
 async def get_images_by_date(request: TimesRequest):
-    logger.debug("🔍 /api/v1/images/ endpoint hit")
+    logger.debug("/api/v1/images/ endpoint hit")
     try:
         # Get the data into a  form that will help us query the database
         times = request.times
@@ -580,7 +580,7 @@ async def run_training(
     run_name: str = Query("run_001")
 ):
     try:
-        logger.info("Training request received")
+        logger.debug("Training request received")
 
         # Send request to model-training container as it has gpu support
         async with httpx.AsyncClient(timeout=300) as client:
@@ -630,7 +630,7 @@ async def proxy_training_stream(
     epochs: int = Query(1)
 ):
     try:
-        logger.info("Streaming training request received")
+        logger.debug("Streaming training request received")
 
         # The parameters to configure the model training
         # model_training_url = "http://model-training:8401/training/stream"
@@ -813,7 +813,7 @@ async def set_frame_interval(request: FrameIntervalRequest):
     Proxy to data-intake to update frame interval for a specific camera
     """
     try:
-        print(f"Trying to connect to: {DATA_INTAKE_URL}/frame_interval")
+        logger.debug(f"Trying to connect to: {DATA_INTAKE_URL}/frame_interval")
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{DATA_INTAKE_URL}/frame_interval",
@@ -879,7 +879,7 @@ async def forward_chain_predict(request: ChainPredictionRequest):
     """
     Forward a chain prediction request to the backend model-deploy service.
     """
-    logger.info(f"Forwarding chain prediction: models={request.model_names}, instances={len(request.instances)}")
+    logger.debug(f"Forwarding chain prediction: models={request.model_names}, instances={len(request.instances)}")
     
     async with httpx.AsyncClient(timeout=120.0) as client:
         try:
@@ -937,7 +937,7 @@ async def save_prediction(request: SavePredictionRequest):
         }
 
         result = await db["predictions"].insert_one(doc)
-        logger.info(f"Saved prediction metadata to MongoDB with id {result.inserted_id}")
+        logger.debug(f"Saved prediction metadata to MongoDB with id {result.inserted_id}")
 
         return {"status": "ok", "id": str(result.inserted_id), "path": file_path}
     except Exception as e:
@@ -1020,13 +1020,13 @@ async def save_prediction(request: SavePredictionRequest):
 
 @app.post("/api/v1/collector/channels")
 async def channels(request: ChannelsRequest):
-    logger.info(f"Reached pig-sorting-api channel request")
+    logger.debug(f"Reached pig-sorting-api channel request")
     async with httpx.AsyncClient() as client:
         response = await client.post(f"{DATA_INTAKE_URL}/channels",
                     json={"username": request.username,
                         "password": request.password,
                         "nvr_ip": request.nvr_ip})
         
-        logger.info(f"Returning values inside of pig-sorting-api: {response.json()}")
+        logger.debug(f"Returning values inside of pig-sorting-api: {response.json()}")
         return response.json()
 

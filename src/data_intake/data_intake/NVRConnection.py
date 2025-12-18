@@ -212,20 +212,20 @@ def onvifCameraInfo(username: str, password: str, nvr_ip: str):
             device_service = camera.create_devicemgmt_service()
 
             device_time = device_service.GetSystemDateAndTime()
-            logger.info(f"Camera Time: {device_time}")
+            logger.debug(f"Camera Time: {device_time}")
 
 
             device_info = device_service.GetDeviceInformation()
-            logger.info("Manufacturer: %s", device_info.Manufacturer)
-            logger.info("Model: %s", device_info.Model)
-            logger.info("Firmware: %s", device_info.FirmwareVersion)
-            logger.info("Serial Number: %s", device_info.SerialNumber)
-            logger.info("Hardware ID: %s", device_info.HardwareId)
+            logger.debug("Manufacturer: %s", device_info.Manufacturer)
+            logger.debug("Model: %s", device_info.Model)
+            logger.debug("Firmware: %s", device_info.FirmwareVersion)
+            logger.debug("Serial Number: %s", device_info.SerialNumber)
+            logger.debug("Hardware ID: %s", device_info.HardwareId)
 
 
             device_outputs = device_service.GetCapabilities({'Category': 'All'})
 
-            logger.info("Device service capabilities: %s", device_outputs)
+            logger.debug("Device service capabilities: %s", device_outputs)
 
 
             return  # success
@@ -275,9 +275,9 @@ def getCameraChannels(username: str, password: str, nvr_ip: str):
             # grab the number
             channel_number = channel_component[7:]
             camera_channels.add(channel_number)
-            logger.info(f"Detected channels {channel_number}")
+            logger.debug(f"Detected channels {channel_number}")
             
-        logger.info(f"Set of camera channels {camera_channels}")
+        logger.debug(f"Set of camera channels {camera_channels}")
         return camera_channels
 
     except (socket.error, Fault, RequestException) as e:
@@ -392,11 +392,11 @@ def capture_camera(username, password, nvr_ip, channel, subtype=0):
             timestamp_str = dt_obj.strftime("%Y:%m:%d %H:%M:%S")
             if manual_capture_flags[channel].is_set():
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}_manual.jpg")
-                print(f"Saved image to: {frame_filename}")
+                logger.info(f"Saved image to: {frame_filename}")
                 trigger_method = "manual"
             else:
                 frame_filename = os.path.join(frame_output_dir, f"camera_{channel}_frame_{timestamp_str}.jpg")
-                print(f"Saved image to: {frame_filename}")
+                logger.info(f"Saved image to: {frame_filename}")
                 trigger_method = "automatic"
             logger.info(f"Saving image {frame_filename}")
             cv2.imwrite(frame_filename, frame)
@@ -476,7 +476,7 @@ def SavePictureData(image_path, author, serialNumber, dateTime, userComment, des
 
     # Insert into MongoDB (convert to dict)
     resp = image_table.insert_one(metadata.dict())
-    logger.info(f"Inserted into MongoDb: {metadata.dict()}, \n Response: {resp}")
+    logger.debug(f"Inserted into MongoDb: {metadata.dict()}, \n Response: {resp}")
 
 
 
@@ -640,7 +640,7 @@ async def startup_event():
             daemon=True
         )
         t.start()
-        logger.info(f"Started capture thread for channel {ch}")
+        logger.debug(f"Started capture thread for channel {ch}")
 
     logger.info("Startup complete — API is ready.")
 
@@ -698,14 +698,12 @@ async def trigger_capture(payload: CapturePayload):
 
                     if payload.comments and ch_str in payload.comments:
                         camera_comments[ch_str] = payload.comments[ch_str]
-                        logger.info("individual comments")
-                        logger.info(camera_comments)
+
 
                     # Assign a global comment to all cameras
                     elif payload.comment:
                         camera_comments[ch_str] = payload.comment
-                        logger.info("global comment")
-                        logger.info(camera_comments)
+                        
 
                     # Trigger manual capture
                     manual_capture_flags[ch_str].set()

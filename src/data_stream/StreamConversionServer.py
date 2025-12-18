@@ -2,6 +2,7 @@ from flask import Flask, Response
 import cv2
 import time
 import os
+import logging
 
 app = Flask("mjpeg")
 NVR_USERNAME = os.getenv("NVR_USERNAME")
@@ -22,6 +23,12 @@ CAMERAS = {
     # "cam3HighDef": f"{RTSP_BASE_CONNECTION}channel=3&subtype=0&tcp",
     # "cam3LowDef": f"{RTSP_BASE_CONNECTION}channel=3&subtype=1&tcp",
 }
+
+logger = logging.getLogger()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 
 
@@ -47,9 +54,9 @@ def open_stream(rtsp_url):
     while cap is None or not cap.isOpened():
         cap = cv2.VideoCapture(rtsp_url)
         if not cap.isOpened():
-            print("[WARN] Failed to connect to RTSP. Retrying in 5s...")
+            logger.error("[WARN] Failed to connect to RTSP. Retrying in 5s...")
             time.sleep(5)
-    print("[INFO] Connected to RTSP stream.")
+    logger.info("Connected to RTSP stream.")
     return cap
 
 
@@ -76,9 +83,9 @@ def gen_frames(rtspstream):
     while True:
         success, frame = cap.read()
         if success:
-            print(f"Connected to: {rtspstream} for decoding.")
+            logger.info(f"Connected to: {rtspstream} for decoding.")
         if not success:
-            print("[WARN] Lost connection to RTSP. Reconnecting...")
+            logger.error("Lost connection to RTSP. Reconnecting...")
             cap.release()
             cap = open_stream(rtspstream)
             continue
