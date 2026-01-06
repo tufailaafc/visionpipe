@@ -74,6 +74,13 @@ sudo chown 1001 processed
 ## model-deploy (WIP)
 Loads the models trained by the model training container and will allow the user to upload an image and perform inference with the selected model.<br>
 Currently has the ability to dynamically select the confidence threshold.<br>
+All models you wish to deploy must be stored in the /models folder. <br>
+For YOLO models it may look like this: models/YOLO/my_project/run009/weights/best.pt <br>
+The important part being that the final file is a .pt model. <br>
+For DeepLabCut models the file paths should look something like this: models/DeepLabCut/PorkAnalysis-WG-2025-12-10/config.yaml <br>
+It is important that it goes models/DeepLabCut/*your folders <br>
+This helps with the descion making process. <br>
+
 TODO:
  - Might want to change it to use a triton inference server.
 

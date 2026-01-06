@@ -94,29 +94,33 @@ def camera_select():
     # if is port 3 then it must only have the number 3 in it.
     # This allows us to parse it easier.
     # camera_ids = st.multiselect("Choose cameras", ["cam1HighDef", "cam1LowDef","cam3HighDef", "cam3LowDef"])
-    response = requests.post(f"{MIDDLEWARE_URL}/api/v1/collector/channels", 
-                            json={"username": None,
-                                "password": None,
-                                "nvr_ip": None})
-    camera_ids = {}
-    # st.json(response.json())
-    res_val_list = response.json()["channel_ids"]
-    # for res in response.json().values():
-    # st.dataframe(res_val_list)
-    for res in res_val_list:
-        camera_ids[f"cam{res}HighDef"] = res 
-        camera_ids[f"cam{res}LowDef"] = res 
+    try:
+        response = requests.post(f"{MIDDLEWARE_URL}/api/v1/collector/channels", 
+                                json={"username": None,
+                                    "password": None,
+                                    "nvr_ip": None})
 
-    camera_ids = st.multiselect("Choose cameras", camera_ids)
+        camera_ids = {}
+        # st.json(response.json())
+        res_val_list = response.json()["channel_ids"]
+        
+        # for res in response.json().values():
+        # st.dataframe(res_val_list)
+        for res in res_val_list:
+            camera_ids[f"cam{res}HighDef"] = res 
+            camera_ids[f"cam{res}LowDef"] = res 
     
+        camera_ids = st.multiselect("Choose cameras", camera_ids)
 
 
-    return camera_ids
+        return camera_ids
     # if camera_id and st.button("Connect to selected cameras"):
     #     for cam in camera_id:
     #         if cam:
     #             mjpeg_url = f"http://localhost:8801/stream/{cam}.mjpeg"
     #             st.image(mjpeg_url)
+    except Exception as e:
+        st.write(e)
 
 
 def display_camera_stream(camera_ids):
@@ -243,7 +247,7 @@ def display_prediction():
     """
     if "prediction_results" in st.session_state and st.session_state.prediction_results != None:
         st.subheader("Prediction Results")
-        
+        st.json(st.session_state.prediction_results)
         # Add a clear results button
         if st.button("Clear Results"):
             st.session_state.prediction_results = None
@@ -262,9 +266,20 @@ def display_prediction():
                     detections = step.get("detections", [])
                     if detections:
                         for det in detections:
+                            # Display Yolo Classification formatted predictions
                             label = det.get("class")
                             conf = det.get("confidence", 0)
-                            st.write(f"- `{label}` (confidence: {conf:.2f})")
+                            if label != None:
+                                st.write(f"- `{label}` (confidence: {conf:.2f})")
+
+                            # Display DeepLabCut formatted predicitions
+                            bodypart = det.get("bodypart") 
+                            x_coord = det.get("x")
+                            y_coord = det.get("y")
+                            likelihood = det.get("likelihood")
+                            if bodypart != None:
+                                st.write(f"- `{bodypart}` (confidence: {likelihood:.2f}) `Coords(x,y)` ({x_coord:.2f},{y_coord:.2f})")
+
                     else:
                         st.write("_No detections_")
 

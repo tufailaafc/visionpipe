@@ -19,6 +19,10 @@ COPY requirements.txt /app/
 RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verbose 
 
 
+#Add DeepLabCut
+RUN pip install --pre deeplabcut
+
+
 
 # Copy the rest of the application
 COPY . /app/

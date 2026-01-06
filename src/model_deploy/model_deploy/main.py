@@ -76,7 +76,7 @@ class ModelResult(BaseModel):
 # Full chain result for a single image
 class ChainResult(BaseModel):
     chain: List[ModelResult]
-    annotated_image: str  
+    annotated_image: Optional[str] = None
 
 class PredictionResponse(BaseModel):
     predictions: List[ChainResult]
@@ -154,57 +154,64 @@ async def predict(request: PredictionRequest):
             else:
                 raise HTTPException(status_code=400, detail="Invalid instance format")
             
-            # Extract YOLO11 parameters if provided
-            parameters = request.parameters or {}
-            confidence_threshold = parameters.get("confidence", 0.5)
-            return_annotated_image = parameters.get("return_annotated_image", False)
+            # Check to see which model type we are using
+            if "DeepLabCut" in request.model_name:
+                app_model.deepLabCut_predict(input_image, request.model_name)
+            else:
+                # Extract YOLO11 parameters if provided
+                parameters = request.parameters or {}
+                confidence_threshold = parameters.get("confidence", 0.5)
+                return_annotated_image = parameters.get("return_annotated_image", False)
 
-            # Run inference with the already loaded model
-            #result = app_model.run_inference(input_image, confidence_threshold=confidence_threshold)
-            model_name = request.model_name
+                # Run inference with the already loaded model
+                #result = app_model.run_inference(input_image, confidence_threshold=confidence_threshold)
+                model_name = request.model_name
 
-            # Run inference
-            result = app_model.run_inference(
-                input_image,
-                model_name=model_name,
-                confidence_threshold=confidence_threshold
-            )
-            detection_list = result["detections"]
+                # Run inference
+                result = app_model.run_inference(
+                    input_image,
+                    model_name=model_name,
+                    confidence_threshold=confidence_threshold
+                )
+                detection_list = result["detections"]
+                # Format predictions
 
-            # Format predictions
+                detections = []
 
-            detections = []
+                for detection in detection_list:
+                    formatted_detection = {
+                        "class": detection["name"],
+                        "confidence": detection["confidence"],
+                        "bbox": {
+                            "xmin": detection["xmin"],
+                            "ymin": detection["ymin"],
+                            "xmax": detection["xmax"],
+                            "ymax": detection["ymax"],
+                        },
+                    }
+                    detections.append(formatted_detection)
+                
+                # Build prediction response
+                # prediction = {"detections": detections, "detection_count": len(detections)}
+                
+                prediction = {"chain": [{"model": model_name, "detections": detections, "detection_count": len(detections)}]}
 
-            for detection in detection_list:
-                formatted_detection = {
-                    "class": detection["name"],
-                    "confidence": detection["confidence"],
-                    "bbox": {
-                        "xmin": detection["xmin"],
-                        "ymin": detection["ymin"],
-                        "xmax": detection["xmax"],
-                        "ymax": detection["ymax"],
-                    },
-                }
-                detections.append(formatted_detection)
-
-            # Build prediction response
-            prediction = {"detections": detections, "detection_count": len(detections)}
-
-            # Add annotated image if requested and detections exists
-            if (
-                return_annotated_image
-                and result["results"]
-                and result["results"][0].boxes is not None
-                and len(result["results"][0].boxes) > 0
-            ):
-                # Draw bounding boxes and labels on the image
-                annotated_image = app_model.get_annotated_image(result["results"])
-                img_bytes = app_model.get_bytes_from_image(annotated_image)
-                prediction["annotated_image"] = base64.b64encode(img_bytes).decode("utf-8")
-
-            predictions.append(prediction)
-        logger.info(f"Processed {len(request.instances)} instances, found {sum(len(p['detections']) for p in predictions)} total detections")
+                # Add annotated image if requested and detections exists
+                
+                if (
+                    return_annotated_image
+                    and result["results"]
+                    and result["results"][0].boxes is not None
+                    and len(result["results"][0].boxes) > 0
+                ):
+                    # Draw bounding boxes and labels on the image
+                    annotated_image = app_model.get_annotated_image(result["results"])
+                    img_bytes = app_model.get_bytes_from_image(annotated_image)
+                    prediction["annotated_image"] = base64.b64encode(img_bytes).decode("utf-8")
+                
+                # print(f"Predictions: {prediction}")
+                predictions.append(prediction)
+            #logger.info(f"Processed {len(request.instances)} instances, found {sum(len(p['detections']) for p in predictions)} total detections")
 
         return PredictionResponse(predictions=predictions)
     
@@ -216,81 +223,6 @@ async def predict(request: PredictionRequest):
         logger.error(f"Prediction error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
     
-
-
-# @app.post("/model/predict/chain")
-# async def predict_chain(request: ChainPredictionRequest):
-#     try:
-#         predictions = []
-
-#         for instance in request.instances:
-#             if isinstance(instance, dict) and "image" in instance:
-#                 image_data = base64.b64decode(instance["image"])
-#                 input_image = app_model.get_image_from_bytes(image_data)
-#             else:
-#                 raise HTTPException(status_code=400, detail="Invalid instance format")
-
-#             # Process through each model in sequence
-#             chain_results = []
-#             current_image = input_image
-
-#             for model_name in request.model_names:
-#                 if not app_model.is_model_ready(model_name):
-#                     raise HTTPException(status_code=404, detail=f"Model {model_name} not loaded")
-
-#                 parameters = request.parameters or {}
-#                 confidence_threshold = parameters.get("confidence", 0.5)
-#                 return_annotated_image = parameters.get("return_annotated_image", False)
-
-#                 # Run inference
-#                 result = app_model.run_inference(
-#                     current_image,
-#                     model_name=model_name,
-#                     confidence_threshold=confidence_threshold
-#                 )
-
-#                 detections = []
-#                 for det in result["detections"]:
-#                     detections.append({
-#                         "class": det["name"],
-#                         "confidence": det["confidence"],
-#                         "bbox": {
-#                             "xmin": det["xmin"],
-#                             "ymin": det["ymin"],
-#                             "xmax": det["xmax"],
-#                             "ymax": det["ymax"],
-#                         },
-#                     })
-
-#                 chain_step = {
-#                     "model": model_name,
-#                     "detections": detections,
-#                     "detection_count": len(detections),
-#                 }
-
-#                 # Add annotated image if requested
-#                 if (
-#                     return_annotated_image
-#                     and result["results"]
-#                     and result["results"][0].boxes is not None
-#                     and len(result["results"][0].boxes) > 0
-#                 ):
-#                     annotated_image = app_model.get_annotated_image(result["results"])
-#                     img_bytes = app_model.get_bytes_from_image(annotated_image)
-#                     chain_step["annotated_image"] = base64.b64encode(img_bytes).decode("utf-8")
-
-#                     # update current_image → pass annotated image to next model
-#                     current_image = annotated_image  
-
-#                 chain_results.append(chain_step)
-
-#             predictions.append({"chain": chain_results})
-
-#         return {"predictions": predictions}
-
-#     except Exception as e:
-#         logger.error(f"Chained prediction error: {e}")
-#         raise HTTPException(status_code=500, detail=f"Chained prediction failed: {e}")
 
 
 
@@ -321,8 +253,12 @@ async def predict_chain(request: ChainPredictionRequest):
 
         # Generate a distinct color for each model in the chain
         model_colors = app_model.generate_distinct_colors(request.model_names)
+        
 
+        # Process each image passed
         for instance in request.instances:
+
+            #Ensure that the image is valid
             if isinstance(instance, dict) and "image" in instance:
                 image_data = base64.b64decode(instance["image"])
                 input_image = app_model.get_image_from_bytes(image_data)
@@ -330,53 +266,64 @@ async def predict_chain(request: ChainPredictionRequest):
                 raise HTTPException(status_code=400, detail="Invalid instance format")
 
             chain_results = []
+            parameters = request.parameters or {}
+            confidence_threshold = parameters.get("confidence", 0.5)
 
+            
+            # Use each model on the current image.
             for model_name in request.model_names:
-                if not app_model.is_model_ready(model_name):
-                    raise HTTPException(status_code=404, detail=f"Model '{model_name}' not loaded")
+                # Check to see which model type we are using
+                if "DeepLabCut" in model_name:
+                    # Check to see if the user wants an annotated image returned
+                    return_annotated_image = (request.parameters or {}).get("return_annotated_image", False)
 
-                parameters = request.parameters or {}
-                confidence_threshold = parameters.get("confidence", 0.5)
+                    # Process the image with the selected model
+                    results, annotated_image = app_model.deepLabCut_predict(input_image, model_name, return_annotated_image, confidence_threshold)
+                    
+                    
+                    if annotated_image != None:
+                        img_bytes = app_model.get_bytes_from_image(annotated_image)
+                        annotated_image_b64 = base64.b64encode(img_bytes).decode("utf-8")
+                    else:
+                        annotated_image_b64 = None
 
-                # Run inference
-                result = app_model.run_inference(
-                    input_image,
-                    model_name=model_name,
-                    confidence_threshold=confidence_threshold
-                )
 
-                detections = [
-                    {
-                        "class": det["name"],
-                        "confidence": det["confidence"],
-                        "bbox": {
-                            "xmin": det["xmin"],
-                            "ymin": det["ymin"],
-                            "xmax": det["xmax"],
-                            "ymax": det["ymax"],
-                        },
+                    detections = app_model.format_dlc_results(results)
+
+                    formatted_results = {
+                        "model": model_name,
+                        "detections": detections,
+                        "detection_count": len(detections),
                     }
-                    for det in result["detections"]
-                ]
+                    chain_results.append(formatted_results)
 
-                chain_results.append({
-                    "model": model_name,
-                    "detections": detections,
-                    "detection_count": len(detections)
+                    
+
+                else:
+                    if not app_model.is_model_ready(model_name):
+                        raise HTTPException(status_code=404, detail=f"Model '{model_name}' not loaded")
+
+                    # Run inference
+                    result = app_model.run_inference(
+                        input_image,
+                        model_name=model_name,
+                        confidence_threshold=confidence_threshold
+                        )
+                    formatted_results=app_model.format_results_yolo(result, model_name)
+                    chain_results.append(formatted_results)
+
+                    annotated_image_b64 = None
+                    # Annotate image with all detections from all models
+                    return_annotated_image = (request.parameters or {}).get("return_annotated_image", False)
+                    if return_annotated_image:
+                        annotated_image = app_model.annotate_image_with_detections(input_image.copy(), chain_results, model_colors)
+                        img_bytes = app_model.get_bytes_from_image(annotated_image)
+                        annotated_image_b64 = base64.b64encode(img_bytes).decode("utf-8")
+
+                predictions.append({
+                    "chain": chain_results,
+                    "annotated_image": annotated_image_b64
                 })
-
-            # Annotate image with all detections from all models
-            annotated_image_b64 = None
-            return_annotated_image = (request.parameters or {}).get("return_annotated_image", False)
-            if return_annotated_image:
-                annotated_image = app_model.annotate_image_with_detections(input_image.copy(), chain_results, model_colors)
-                img_bytes = app_model.get_bytes_from_image(annotated_image)
-                annotated_image_b64 = base64.b64encode(img_bytes).decode("utf-8")
-
-            predictions.append({
-                "chain": chain_results,
-                "annotated_image": annotated_image_b64
-            })
 
         return {"predictions": predictions}
 
@@ -434,7 +381,9 @@ def discover_available_models():
     Returns:
         dict: {"models": {model_name: full_path}}.
     """
-    return {"models": app_model.discover_models()}
+    models = app_model.discover_models()
+    models.update(app_model.discover_deepLabCut_models())
+    return {"models": models}
 
 
 
@@ -454,6 +403,7 @@ def load_discovered_model(req: ModelKeyRequest):
         HTTPException(500): If model loading fails.
     """
     all_discovered = app_model.discover_models()
+    
 
     if req.model_key not in all_discovered:
         raise HTTPException(status_code=404, detail=f"Model '{req.model_key}' not found.")

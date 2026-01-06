@@ -1,3 +1,5 @@
+#Currently mostly depreciated. Instead use app.py
+
 import streamlit as st
 import requests
 import base64
@@ -87,15 +89,35 @@ if uploaded_file is not None:
                 result = res.json()
 
                 # Display detections
+                # for i, pred in enumerate(result["predictions"]):
+                #     st.subheader(f"Detections (Image {i+1})")
+                #     for det in pred["detections"]:
+                #         st.write(f"- **{det['class']}** with {det['confidence']*100:.1f}% confidence")
+
+                #     if return_annotated and "annotated_image" in pred:
+                #         annotated_bytes = base64.b64decode(pred["annotated_image"])
+                #         annotated_img = Image.open(io.BytesIO(annotated_bytes))
+                #         st.image(annotated_img, caption="Annotated Image", use_column_width=True)
                 for i, pred in enumerate(result["predictions"]):
                     st.subheader(f"Detections (Image {i+1})")
-                    for det in pred["detections"]:
-                        st.write(f"- **{det['class']}** with {det['confidence']*100:.1f}% confidence")
 
-                    if return_annotated and "annotated_image" in pred:
+                    # NEW: iterate through chain
+                    for step in pred["chain"]:
+                        st.markdown(f"**Model:** `{step['model']}`")
+
+                        for det in step["detections"]:
+                            st.write(
+                                f"- **{det['class']}** with {det['confidence']*100:.1f}% confidence"
+                            )
+
+                    if return_annotated and pred.get("annotated_image"):
                         annotated_bytes = base64.b64decode(pred["annotated_image"])
                         annotated_img = Image.open(io.BytesIO(annotated_bytes))
-                        st.image(annotated_img, caption="Annotated Image", use_column_width=True)
+                        st.image(
+                            annotated_img,
+                            caption="Annotated Image",
+                            use_column_width=True
+                        )
 
             except Exception as e:
                 st.error(f"Inference failed: {e}")

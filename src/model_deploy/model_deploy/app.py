@@ -5,6 +5,12 @@ import PIL
 import io
 import numpy
 from typing import Dict, Any
+import deeplabcut
+from pathlib import Path
+from deeplabcut.utils import auxiliaryfunctions
+# import tempfile
+import shutil
+import pandas as pd
 
 import os
 import glob
@@ -229,14 +235,31 @@ def discover_models() -> Dict[str, str]:
     Returns:
         dict: Mapping of model name to full file path.
     """
-    model_paths = glob.glob(os.path.join(MODEL_ROOT, "**", "weights", "*.pt"), recursive=True)
+    model_paths = glob.glob(os.path.join(MODEL_ROOT+"/YOLO", "**", "weights", "*.pt"), recursive=True)
     discovered = {}
 
     for path in model_paths:
         # Use relative path from MODEL_ROOT as model name
         model_name = os.path.relpath(path, MODEL_ROOT).replace("/", "_").replace(".pt", "")
         discovered[model_name] = path
+    return discovered
 
+
+def discover_deepLabCut_models() -> Dict[str, str]:
+    """Search the models directory for DeepLabCut config.yml files.
+
+    Returns:
+        dict: Mapping of model name to full file path.
+    """
+    print("tried to load DeepLabCutModels")
+    model_paths = glob.glob(os.path.join(MODEL_ROOT+"/DeepLabCut", "**", "config.yaml"), recursive=True)
+    discovered = {}
+
+    for path in model_paths:
+        # Use relative path from MODEL_ROOT as model name
+        model_name = os.path.relpath(path, MODEL_ROOT).replace("/", "_")
+        discovered[model_name] = path
+    print(f"discovered DeepLabCut: {discovered}")
     return discovered
 
 
@@ -275,6 +298,189 @@ def generate_distinct_colors(model_names):
         # Generate a random RGB color as a tuple
         colors[name] = tuple(random.choices(range(50, 256), k=3))
     return colors
+
+
+def clear_directory(path: Path):
+    """Clears all contents in the specified directory
+
+    Args:
+        path (Path): Path of the directory to delete all contents
+
+    Returns:
+        None
+    """
+    for item in path.iterdir():
+        if item.is_file():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)
+
+
+
+
+def deepLabCut_predict(image, model_name, return_annotated_image, p_cutoff=0.15):
+    """Perform inference on an image using a DeepLabCut model.
+
+    Args:
+        input_image (PIL.Image.Image): Input image for detection.
+        model_name (str): The registered model name to use.
+        return_annotated_image (bool): Determines if we create and return and annotated image.
+        confidence_threshold (float, optional): Minimum confidence score
+            for detections. Defaults to 0.15.
+
+    Returns:
+        Pandas.DataFrame: contains x,y, likelihood, bodypart
+        PIL.Image.Image(Optional): The annotated image 
+    """
+    output_dir = Path("/app/tmp/output")
+    images_dir = Path("/app/tmp/input")
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    # Optional: ensure directories start clean
+    clear_directory(output_dir)
+    clear_directory(images_dir)
+
+    # Get a list of all the deeplabcut models
+    deeplabmodels = discover_deepLabCut_models()
+    # Get the path to the config file
+    config_path = deeplabmodels.get(model_name)
+
+    if not isinstance(config_path, str):
+        raise RuntimeError("Config file not found")
+
+    
+    project_path = config_path.replace("/config.yaml", "")
+
+    # Replacing the project path in config to ensure it works in Docker
+    auxiliaryfunctions.edit_config(
+        config_path,
+        {"project_path": project_path}
+    )
+
+    # Save input image
+    image_path = images_dir / "frame.png"
+    # May need something like this for if we are recieving multiple requests
+    # for i, img in enumerate(image):
+    #     img.save(images_dir / f"{i:04d}.png")
+    image.save(image_path)
+
+    # Run DLC inference
+    deeplabcut.analyze_images(
+        config=config_path,
+        images=[str(image_path)],
+        destfolder=str(output_dir),
+        save_as_csv=True,
+        plotting=return_annotated_image,
+        # plot_skeleton=return_annotated_image,
+        pcutoff=p_cutoff,
+        #These values can be set to more explicitly select the model
+        # snapshotindex=-1,
+        # shuffle=0,
+        # trainingsetindex=0,
+    )
+
+    # ---- READ RESULTS ----
+    csv_files = list(output_dir.glob("*.csv"))
+    if not csv_files:
+        raise RuntimeError("No DLC output CSV found")
+
+    results_df = pd.read_csv(csv_files[0], header=[0, 1, 2])
+    print(f"return_annotated_image: {return_annotated_image}")
+
+    # ---- LOAD ANNOTATED IMAGE IF REQUESTED ----
+    annotated_image = None
+    if return_annotated_image:
+
+        # Looking for the output image directory
+        labeled_dirs = [
+            p for p in output_dir.iterdir()
+                if p.is_dir() and p.name.startswith("LabeledImages_")
+            ]
+
+        if len(labeled_dirs) == 0:
+            raise RuntimeError("DLC did not produce a LabeledImages directory")
+
+        if len(labeled_dirs) > 1:
+            raise RuntimeError(
+                f"Expected 1 LabeledImages directory, found {len(labeled_dirs)}"
+            )
+        predicted_dir = labeled_dirs[0]
+        
+        annotated_candidates = list(predicted_dir.glob("*.png"))
+        print(f"Trying to return one of these images: {annotated_candidates}")
+
+        if annotated_candidates:
+            annotated_image = PIL.Image.open(annotated_candidates[0]).convert("RGB")
+
+
+
+    # ---- MANUAL CLEANUP ----
+    clear_directory(output_dir)
+    clear_directory(images_dir)
+    
+    
+
+    return results_df, annotated_image
+
+
+
+
+
+
+def format_dlc_results(df):
+    """Formats the passed in results for DeepLabCut to be compatible with the rest of the system
+
+    Args:
+        df (Pandas.DataFrame): A multi-index dataframe produced by deeplabcut
+
+    Returns:
+        List[Dict]: key value pairs for: bodypart, x, y, likelihood and frame_index
+    """
+    # Drop the "coords" row
+    df = df[df.iloc[:, 0] != "coords"]
+    
+    if df.empty:
+        return []
+
+    # Single-image inference → one row
+    row = df.iloc[0]
+
+    results = []
+
+    # Skip first column (image path)
+    cols = df.columns[1:]
+
+    # Iterate in triplets: x, y, likelihood
+    for i in range(0, len(cols), 3):
+        try:
+            x_col = cols[i]
+            y_col = cols[i + 1]
+            l_col = cols[i + 2]
+        except IndexError:
+            continue
+
+        # bodypart is level-2 of the MultiIndex
+        bodypart = x_col[2]
+
+        x = float(row[x_col])
+        y = float(row[y_col])
+        likelihood = float(row[l_col])
+
+        
+        results.append({
+            "bodypart": bodypart,
+            "x": x,
+            "y": y,
+            "likelihood": likelihood,
+            "frame_index": 0
+        })
+    print(results)
+    return results
+
+
+
 
 
 
@@ -326,3 +532,35 @@ def annotate_image_with_detections(image: PIL.Image.Image, chain_results: list, 
                 draw.text((bbox["xmin"], bbox["ymin"] - 10), label, fill=color)
 
     return image
+
+
+def format_results_yolo(result, model_name):
+    """Formats the passed in results from YOLO to be compatible with the rest of the system
+
+    Args:
+        result (Dict): A dictionary containing YOLO results
+        model_name (str): The name of the model used for inference
+
+    Returns:
+        Dict: Contains the model name, the detections and the detection count.
+    """
+    detections = [
+        {
+        "class": det["name"],
+        "confidence": det["confidence"],
+        "bbox": {
+            "xmin": det["xmin"],
+            "ymin": det["ymin"],
+            "xmax": det["xmax"],
+            "ymax": det["ymax"],
+            },
+        }
+        for det in result["detections"]
+    ]
+
+                    
+    return {
+            "model": model_name,
+            "detections": detections,
+            "detection_count": len(detections)
+            }
