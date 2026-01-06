@@ -143,13 +143,6 @@ def is_reachable(ip, port=80, timeout=2):
 
 # Using a logger as opposed to print to make better for scaling and multithreading.
 # Set to the log level desired, also may stop fastapi from suppressing the logs.
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s - %(levelname)s - %(message)s",
-# )
-
-# # Set this to uvicorn.info so that the logs will propagate
-# logger = logging.getLogger('uvicorn.info')
 logger = logging.getLogger("nvr")
 logger.setLevel(logging.DEBUG)
 
@@ -483,59 +476,6 @@ def SavePictureData(image_path, author, serialNumber, dateTime, userComment, des
 
 
 
-
-
-# @app.on_event("startup")
-# async def startup_event():
-# # if __name__ == "__main__":
-#     global manual_capture_flags
-#     username = os.getenv("NVR_USERNAME")
-#     password = os.getenv("NVR_PASSWORD")
-
-#     if not username or not password:
-#         raise ValueError("NVR_USERNAME and NVR_PASSWORD environment variables must be set.")
-
-#     nvr_ip = os.getenv("NVR_IP")
-
-#     # display NVR info.
-#     onvifCameraInfo(username, password, nvr_ip)
-
-#     #channels = [1,3] # gives all of the channels you would like to connect to.
-#     channels = getCameraChannels(username, password, nvr_ip)
-
-
-
-#     # Load frame intervals from config.json if it exists
-#     if os.path.exists(FRAME_CONFIG_FILE):
-#         try:
-#             with open(FRAME_CONFIG_FILE, "r") as f:
-#                 camera_frame_intervals = json.load(f)
-#             logger.info(f"Loaded frame intervals from config.json: {camera_frame_intervals}")
-#         except Exception as e:
-#             logger.error(f"Failed to load frame intervals: {e}")
-#             # fallback to default
-#             camera_frame_intervals = {ch: g_frame_interval for ch in channels}
-#     else:
-#         camera_frame_intervals = {ch: g_frame_interval for ch in channels}
-
-
-#     # Creating a flag for every channel to manually take pictures
-#     manual_capture_flags = {ch: threading.Event() for ch in channels}
-#     logger.debug(f"This is what is inside of manual_capture_flags: {manual_capture_flags}")
-#     threads = []
-#     try:
-#     # for every channel create a thread
-#         for ch in channels:
-#             t = threading.Thread(target=capture_camera, args=(username, password, nvr_ip, ch))
-#             t.start()
-#             threads.append(t)
-#     except KeyboardInterrupt:
-#             logger.info("\nKeyboardInterrupt received, stopping threads...")
-#             stop_event.set()  # Signal threads to stop
-#     # Wait for all threads to finish
-#     for t in threads:
-#         t.join()
-
 def change_frame_interval(channel: int, frame_interval: int):
     """Update the capture frame interval for a channel and persist it to disk.
 
@@ -650,36 +590,7 @@ async def startup_event():
 
 
 
-# @app.post("/capture/")
-# async def trigger_capture(payload : CapturePayload):
-#     global manual_capture_flags
-#     """Manually trigger image capture on one or more camera channels.
 
-#     Args:
-#         payload (CapturePayload): Payload containing list of channels to capture.
-
-#     Returns:
-#         dict: Response with status and channels where capture was triggered.
-
-#     Raises:
-#         500 Internal Server Error: If an error occurs during capture triggering.
-#     """
-#     try:
-#         # For every channel we have passed in.
-#         for ch in payload.channels:
-#             #Check to see if it extists in the list
-#             # Ensure that it is a string, because manual_capture_flags is {"1": event}
-#             if str(ch) in manual_capture_flags:
-                
-#                 manual_capture_flags[str(ch)].set()
-#                 logger.info(f"Manual capture triggered for channel {ch}")
-#             else:
-#                 logger.warning(f"Channel {ch} not found")
-
-#         return {"status": "ok", "channels": payload.channels}
-#     except Exception as e:
-#         logger.error(f"Error in trigger_capture: {e}")
-#         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 
@@ -718,18 +629,7 @@ async def trigger_capture(payload: CapturePayload):
         return JSONResponse(status_code=500, content={"error": str(e)})
     
 
-# @app.post("/frame_interval/")
-# async def set_frame_interval(interval: int = Body(..., embed=True)):
-#     """
-#     Update the global frame capture interval
-#     """
-#     try:
-#         change_frame_interval(interval)
-#         logger.info(f"Frame interval set to {interval}")
-#         return {"status": "ok", "frame_interval": interval}
-#     except Exception as e:
-#         logger.error(f"Error in set_frame_interval: {e}")
-#         return JSONResponse(status_code=500, content={"error": str(e)})
+
 
 
 @app.post("/frame_interval")
