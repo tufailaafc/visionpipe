@@ -57,11 +57,6 @@ import time
 from datetime import datetime, timedelta
 
 # Set to the log level desired, also may stop fastapi from suppressing the logs.
-
-
-# Set this to uvicorn.info so that the logs will propagate
-# logger = logging.getLogger('uvicorn.info')
-# logger = logging.getLogger('uvicorn.info')
 logger = logging.getLogger()
 logging.basicConfig(
     level=logging.INFO,
@@ -90,10 +85,28 @@ MODEL_DEPLOY_URL = "http://model-deploy:8601"
 # These can be called whatever you want.
 DEFAULT_MODEL_NAMES = ["70run3Best", "70run3Last"]
 # These are the relative paths inside of the model-deploy container and must be inside of the models folder.
-DEFAULT_MODEL_PATHS = ["/app/models/Proper_Test/70 epochs medium run3/weights/best.pt","/app/models/Proper_Test/70 epochs medium run3/weights/last.pt"]
+DEFAULT_MODEL_PATHS = ["/app/models/YOLO/Proper_Test/70 epochs medium run3/weights/best.pt","/app/models/YOLO/Proper_Test/70 epochs medium run3/weights/last.pt"]
 
-# A list of our cameras
+
+# For automatic processing of the images saved in mongo
+CATCHUP_WINDOW_MINUTES = 5
+STATE_COLLECTION = "watcher_state"
+STATE_ID = "mongo_poller"  # unique key for this watcher
+
+
+
+
 class CaptureRequest(BaseModel):
+    """
+    Request model for triggering manual data captures.
+
+    Attributes:
+        channels (list[int]): List of channel IDs to capture from.
+        comment (str | None): Optional global comment applied to all
+            captured channels.
+        comments (dict[int, str] | None): Optional per-channel comments
+            keyed by channel ID.
+    """
     channels: list[int]
     comment: str | None = None
     comments: dict[int, str] | None = None
@@ -101,8 +114,15 @@ class CaptureRequest(BaseModel):
 
 
 # for updating how often the cameras take pictures, 
-# interval is how many frames between taking pictures and channel is the camera port it is connected to.
+# interval is how many frames between taking pictures and channel is the camera channel it is connected to.
 class FrameIntervalRequest(BaseModel):
+    """
+    Request model for updating camera frame capture intervals.
+
+    Attributes:
+        channel (int): Camera channel identifier.
+        interval (int): Number of frames between image captures.
+    """
     channel: int
     interval: int
 
@@ -134,6 +154,19 @@ class ChainPredictionResponse(BaseModel):
 
 
 class ChainPredictionRequest(BaseModel):
+    """
+    Request model for chained model predictions.
+
+    Attributes:
+        model_names (List[str]): Ordered list of model identifiers to
+            execute as a prediction chain.
+        instances (List[Dict[str, str]]): List of input instances to be
+            passed through the model chain. Each dictionary represents
+            a single instance and must conform to the backend model
+            input schema which expects the List to contain base64 encoded images.
+        parameters (Optional[Dict[str, Any]]): Optional configuration
+            parameters forwarded to the backend prediction service.
+    """
     model_names: List[str]
     instances: List[Dict[str, str]]
     parameters: Optional[Dict[str, Any]] = None
@@ -141,10 +174,23 @@ class ChainPredictionRequest(BaseModel):
 
 # Define request model
 class SavePredictionRequest(BaseModel):
+    """
+    Request model for saving annotated prediction results.
+
+    Attributes:
+        annotated_image (str): Base64-encoded image containing model
+            annotations (e.g., bounding boxes, labels).
+        detections (List[Dict[str, Any]]): List of detection results such
+            as bounding boxes, class labels, and confidence scores.
+        metadata (Optional[Dict[str, Any]]): Optional additional metadata
+            associated with the prediction.
+        ImageName (Optional[str]): Optional base name for the saved image
+            file. If not provided, a timestamp-based name is used.
+    """
     annotated_image: str                  # base64-encoded image
     detections: List[Dict[str, Any]]      # bounding boxes, confidences, etc.
     metadata: Optional[Dict[str, Any]] = None
-    ImageName: str = None
+    ImageName: Optional[str] = None
 
 class ChannelsRequest(BaseModel):
     """Request model for retrieving active and connected camera ids.
@@ -224,22 +270,7 @@ async def send_to_chain_prediction(image_path: str):
             logger.info(f"Chain prediction completed for {image_path}")
             result = resp.json()
 
-            # call save prediction
-        # file_name = os.path.basename(image_path)
-        # logger.debug(f"file_name: {file_name}")
-        # listOfJson = resp.json().get("predictions", {})
-        # logger.info(f"Prediction results: {listOfJson[0].get("chain")}")
-        # results = resp.json().get("predictions", [])
-            
-        #image = results.get("annotated_image")
-        #detections = resp.get("chain").get("detections",{})
-        #detections = [step["detections"] for step in results.get("chain", [])]
-        #metadata = [step["model"] for step in results.get("chain", [])]
-                            # "detections": [step["detections"] for step in resp.get("chain", [])],
-                            # "metadata": {"models": [step["model"] for step in resp.get("chain", [])]},
-                        
-        #save_request = SavePredictionRequest(img_b64, detections, metadata, file_name)
-        #save_prediction(save_request)
+
         predictions = result.get("predictions", [])
         if not predictions:
             logger.warning(f"No predictions returned for {image_path}")
@@ -275,53 +306,6 @@ async def send_to_chain_prediction(image_path: str):
     except Exception as e:
         logger.error(f"Failed to send chain prediction for {image_path}: {e}")
 
-# async def watch_mongo():
-#     """Watch MongoDB for new inserts and process images."""
-#     logger.info("Starting MongoDB watcher...")
-#     await load_default_models()
-
-#     try:
-#         async with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-#             async for change in stream:
-#                 doc = change["fullDocument"]
-#                 image_path = doc.get("image_path")
-#                 if image_path:
-#                     logger.info(f"New image detected: {image_path}")
-#                     await send_to_chain_prediction(image_path)
-#     except Exception as e:
-#         logger.error(f"Mongo watcher failed: {e}")
-
-
-# async def watch_mongo():
-#     """Poll MongoDB for new images instead of using change streams."""
-#     logger.info("Starting MongoDB polling...")
-#     await load_default_models()
-    
-#     last_check = datetime.utcnow() - timedelta(minutes=1)
-    
-#     while True:
-#         try:
-#             # Find new documents since last check
-#             new_docs = db["metaData"].find({
-#                 "date_time": {"$gt": last_check}
-#             })
-#             logger.debug("checked for new images")
-#             # added asyc check next time.
-#             async for doc in new_docs:
-#                 image_path = doc.get("image_path")
-#                 if image_path:
-#                     logger.info(f"New image detected: {image_path}")
-#                     await send_to_chain_prediction(image_path)
-            
-#             last_check = datetime.utcnow()
-#             await asyncio.sleep(30)  # Poll every 30 seconds
-            
-#         except Exception as e:
-#             logger.error(f"Mongo polling failed: {e}")
-#             await asyncio.sleep(60)
-CATCHUP_WINDOW_MINUTES = 5
-STATE_COLLECTION = "watcher_state"
-STATE_ID = "mongo_poller"  # unique key for this watcher
 
 
 async def get_last_checkpoint():
@@ -440,9 +424,24 @@ def image_to_base64(img: np.ndarray) -> str:
 
 
 
-# Will send all of the records to the user
+# Will send all records to the user
 @app.get("/api/v1/mongoData", response_class=JSONResponse)
-async def get_mongo_data():
+async def get_mongo_data() -> list[dict]:
+    """
+    Retrieve all metadata records from the MongoDB collection.
+
+    This endpoint queries the ``metaData`` collection in MongoDB,
+    converts the result cursor into JSON-serializable Python objects,
+    and returns all records to the client.
+
+    Returns:
+        list[dict]: A list of metadata records retrieved from the
+        ``metaData`` MongoDB collection.
+
+    Raises:
+        HTTPException: If an unexpected error occurs while accessing
+        the database or serializing the results.
+    """
     try:
         logger.debug("/api/v1/mongoData/ endpoint hit")
         db_result = db["metaData"]
@@ -450,8 +449,6 @@ async def get_mongo_data():
 
         #Parse JSON string into python objects to allow creation of a dataframe
         meta_data_json = json.loads(bson.json_util.dumps(result))
-
-        
 
         return meta_data_json
             
@@ -464,7 +461,30 @@ async def get_mongo_data():
 
 # Will send all of the images selected between certain times
 @app.post("/api/v1/images/", response_class=JSONResponse)
-async def get_images_by_date(request: TimesRequest):
+async def get_images_by_date(request: TimesRequest) -> list[dict]:
+    """
+    Retrieve all images captured within a specified time range.
+
+    This endpoint accepts a start and end timestamp, queries the
+    ``metaData`` MongoDB collection for records within that range,
+    loads the corresponding image files from disk, and returns them
+    as base64-encoded strings along with metadata.
+
+    Args:
+        request (TimesRequest): Request body containing a list of two
+            ISO 8601 formatted timestamps representing the start and
+            end of the desired time range.
+
+    Returns:
+        list[dict]: A list of dictionaries, each containing:
+            - ``filename`` (str): Name of the image file.
+            - ``image`` (str): Base64-encoded image data.
+            - ``timestamp`` (str): ISO 8601 formatted capture time.
+
+    Raises:
+        HTTPException: If an unexpected error occurs while querying the
+        database, reading image files, or encoding the images.
+    """
     logger.debug("/api/v1/images/ endpoint hit")
     try:
         # Get the data into a  form that will help us query the database
@@ -502,75 +522,6 @@ async def get_images_by_date(request: TimesRequest):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-# @app.post("/api/v1/predict/", response_class=JSONResponse)
-# async def predict(file: UploadFile = File(...), model_id: int = Query(2), colour_corrected: bool = True, ground_truth:int=None):
-#     try:
-#         image_bytes = await file.read()
-#         image = Image.open(io.BytesIO(image_bytes)).convert("RGB") # PIL Image
-        
-#         #perform colour correction if Colour correct is true
-#         if colour_corrected:
-#            #converting it to a numpy array becuase that is what colour corrector expects
-#            image_bgr = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-#            image = cc.correct(image_bgr)
-#            image = (image * 255).astype(np.uint8)  # Ensure it's uint8 for YOLO
-#         result = run_model(image, model_id)
-#         print("before submit result function")
-        
-#         #adding tag for if it was colour corrected
-#         result["colour_corrected"]=colour_corrected
-        
-#         #add tag for if it were classification or segmentation
-#         result["type"]="classification" if model_id==1 else "segmentation"
-        
-#         #add groundtruth if available
-#         result["ground_truth"]=ground_truth
-        
-#         submitResult(result, image, file.filename)
-        
-#         #print(f"result after submit result: {result}")
-#         return result
-#     except Exception as e:
-#         # Log the exception for debugging purposes
-#         print(f"Error in predict endpoint: {e}")
-#         return JSONResponse(content={"error": str(e)}, status_code=500)
-
-# class ImageData(BaseModel):
-#     image: str
-#     model_id: int = 2
-
-# @app.post("/api/v1/predict_base64/", response_class=JSONResponse)
-# async def predict_base64(data: ImageData, colour_corrected: bool = True, ground_truth:int=None):
-#     try:
-#         image_bytes = base64.b64decode(data.image)
-#         image = Image.open(BytesIO(image_bytes)).convert("RGB") # PIL Image
-        
-#         #perform colour correction if Colour correct is true
-#         if colour_corrected:
-#             #converting it to a numpy array becuase that is what colour corrector expects
-#            image_bgr = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
-#            image = cc.correct(image_bgr)
-#            image = (image * 255).astype(np.uint8)  # Ensure it's uint8 for YOLO
-        
-#         result = run_model(image, data.model_id)
-        
-#         #adding tag for if it was colour corrected
-#         result["colour_corrected"]=colour_corrected
-        
-        
-#         #add tag for if it were classification or segmentation
-#         result["type"] = "classification" if data.model_id == 1 else "segmentation"
-        
-#         #add groundtruth if available
-#         result["ground_truth"]=ground_truth
-        
-#         submitResult(result, image)
-#         #print(f"result after submit result{result}")
-#         return result
-#     except Exception as e:
-#         # Log the exception for debugging purposes
-#         print(f"Error in predict_base64 endpoint: {e}")
-#         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 @app.get("/api/v1/training/trainer", response_class=JSONResponse)
 async def run_training(
@@ -579,6 +530,40 @@ async def run_training(
     project_name: str = Query("default_project"),
     run_name: str = Query("run_001")
 ):
+    """
+    Start a YOLO training job with the specified parameters.
+
+    This endpoint forwards a training request to the GPU-enabled
+    model-training service, waits for training to complete, and logs
+    the results to the MongoDB ``training_logs`` collection.
+
+    The following fields are logged to MongoDB:
+        - ``model_path`` (str): Path to the pretrained model used.
+        - ``dataset_path`` (str): Location of the training dataset.
+        - ``model_export_path`` (str): Path to the newly trained model.
+        - ``project`` (str): Name of the project.
+        - ``run`` (str): Name of the training run.
+        - ``train_results`` (str): Training metrics and results.
+        - ``val_results`` (str): Validation metrics and results.
+        - ``date_time`` (datetime): Timestamp when training completed.
+
+    Args:
+        model_path (str): Path to the pretrained YOLO model.
+        dataset_path (str): Path to the dataset used for training.
+        project_name (str): Logical name for the training project.
+        run_name (str): Identifier for this specific training run.
+
+    Returns:
+        dict: A dictionary containing:
+            - ``message`` (str): Confirmation that training completed.
+            - ``model_export_path`` (str): Path to the trained model.
+            - ``train_results`` (str): Training results.
+            - ``val_results`` (str): Validation results.
+
+    Raises:
+        HTTPException: If the training service fails, times out,
+        or logging to the database is unsuccessful.
+    """
     try:
         logger.debug("Training request received")
 
@@ -629,6 +614,40 @@ async def proxy_training_stream(
     run_name: str = Query("run_001"),
     epochs: int = Query(1)
 ):
+    """
+    Stream a YOLO training job and log results upon completion.
+
+    This endpoint forwards a training request to the GPU-enabled
+    model-training service and streams training progress to the client
+    using Server-Sent Events (SSE). Once training completes, the final
+    results are logged to the MongoDB ``training_logs`` collection.
+
+    The following fields are logged to MongoDB:
+        - ``model_path`` (str): Path to the pretrained model used.
+        - ``dataset_path`` (str): Location of the training dataset.
+        - ``model_export_path`` (str): Path to the newly trained model.
+        - ``project`` (str): Name of the project.
+        - ``run`` (str): Name of the training run.
+        - ``train_results`` (dict | str): Training metrics and results.
+        - ``val_results`` (dict | str): Validation metrics and results.
+        - ``date_time`` (datetime): Timestamp when training completed.
+
+    Args:
+        model_path (str): Path to the pretrained YOLO model.
+        dataset_path (str): Path to the dataset used for training.
+        project_name (str): Logical name for the training project.
+        run_name (str): Identifier for this specific training run.
+        epochs (int): Number of training epochs to run.
+
+    Returns:
+        StreamingResponse: A Server-Sent Events (SSE) stream emitting
+        JSON-encoded training progress updates and a final completion
+        event.
+
+    Raises:
+        HTTPException: If the training service fails, the stream cannot
+        be established, or logging to the database is unsuccessful.
+    """
     try:
         logger.debug("Streaming training request received")
 
@@ -684,6 +703,21 @@ async def proxy_training_stream(
         
 # Helper function to convert ObjectId to string
 def convert_objectid_to_str(data):
+    """
+    Recursively convert MongoDB ObjectId values to strings.
+
+    This function traverses nested dictionaries and lists, replacing
+    any instances of ``bson.ObjectId`` with their string representation.
+    All other data types are returned unchanged.
+
+    Args:
+        data (Any): Input data that may contain dictionaries, lists,
+            or ``ObjectId`` values.
+
+    Returns:
+        Any: The input data with all ``ObjectId`` instances converted
+        to strings.
+    """
     if isinstance(data, dict):
         return {key: convert_objectid_to_str(value) for key, value in data.items()}
     elif isinstance(data, list):
@@ -694,103 +728,26 @@ def convert_objectid_to_str(data):
         return data
         
         
-# #takes a json object and saves it to mongoDB, saves the image in a mounted folder
-# def submitResult(result, image, filename=None):
-#     imageLoc = saveImage(image)
-    
-#     # Adding the file location to our result object
-#     result["image_path"] = imageLoc
-#     #adds the model used to get result
-#     result["class_model"] = classification_model_name
-#     result["segmentation_model"] = segmentation_model_name
-    
-#     #get rid of image
-#     #del result["overlay"]
-    
-#     # Convert ObjectId fields in the result to strings
-#     result = convert_objectid_to_str(result)
-    
-    
-#     #make a copy so we do not change the version sent to the user
-#     db_result_data = result.copy()
-    
-#     #get rid of image so we do not store it inside MongoDB
-#     del db_result_data["overlay"]
-    
-#     # Save the result into MongoDB
-#     try:
-#         db_result = db["result"]
-#         insert_result = db_result.insert_one(db_result_data)
-#         if isinstance(insert_result, InsertOneResult) and insert_result.acknowledged:
-#             print(f"[INFO] Successfully inserted result into MongoDB: {insert_result.inserted_id}")
-#         else:
-#             print(f"[ERROR] MongoDB insert failed")
-    
-#     except Exception as e:
-#         print(f"[ERROR] Error inserting result into MongoDB: {e}")
-    
-#     print(db_result_data)  # Optional: To log the inserted result for testing and debugging
-	
- 
-# # saves the images into a mounted folder, returns the save location
-# def saveImage(image, filename: str = None):
-#     #The relative path to store the images.
-#     IMAGE_DIR = "images"
-    
-#     #the absoulte path within docker, used for testing and debugging
-#     absolute_image_dir = os.path.abspath(IMAGE_DIR)
-#     print(f"[INFO] Saving images to directory: {absolute_image_dir}")
-
-#     try:
-#         if filename is None:
-#             filename = f"meat_image_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-
-#         # Ensure the image directory exists
-#         if not os.path.exists(IMAGE_DIR):
-#             os.makedirs(IMAGE_DIR)
-
-#         filepath = os.path.join(IMAGE_DIR, filename)
-        
-#         if isinstance(image, np.ndarray):
-#             image = Image.fromarray(image)
-            
-#         image.save(filepath, format="JPEG")
-
-#         print(f"[INFO] Saved image to: {filepath}")
-#         return filepath
-
-#     except Exception as e:
-#         print(f"[ERROR] Failed to save image: {e}")
-#         return None
-        
-        
-        
-        
-        
-        
-# @app.post("/api/v1/collector/capture")
-# async def capture(channels: List[int] = Body(...)):
-#     """
-#     Proxy to data-collector to take manual capture(s)
-#     """
-#     async with httpx.AsyncClient() as client:
-#         response = await client.post(f"{DATA_INTAKE_URL}/capture/", json=channels)
-#         return response.json()
-
-
-# @app.post("/api/v1/collector/frame_interval")
-# async def set_frame_interval(interval: int = Body(..., embed=True)):
-#     """
-#     Proxy to data-collector to update frame interval
-#     """
-#     async with httpx.AsyncClient() as client:
-#         response = await client.post(f"{DATA_INTAKE_URL}/frame_interval/", json={"interval": interval})
-#         return response.json()
 
 @app.post("/api/v1/collector/capture")
 async def capture(request: CaptureRequest):
     """
-    Proxy to data-collector to take manual capture(s)
+    Proxy a manual capture request to the data-collector service.
+
+    This endpoint forwards a request to the data-collector to trigger
+    one or more manual captures on the specified channels. Optional
+    comments may be included globally or per channel.
+
+    Args:
+        request (CaptureRequest): Capture configuration including
+            channel identifiers and optional comments.
+
+    Returns:
+        dict: JSON response returned by the data-collector service.
+
+    Raises:
+        HTTPException: If the data-collector service is unreachable
+        or returns an unexpected error.
     """
     try:
         logger.debug(f"Capture channels: {request.channels}")
@@ -810,7 +767,22 @@ async def capture(request: CaptureRequest):
 @app.post("/api/v1/collector/frame_interval")
 async def set_frame_interval(request: FrameIntervalRequest):
     """
-    Proxy to data-intake to update frame interval for a specific camera
+    Update the frame capture interval for a specific camera.
+
+    This endpoint proxies a request to the data-intake service to
+    configure how frequently a camera captures images, based on
+    a frame interval setting.
+
+    Args:
+        request (FrameIntervalRequest): Configuration containing the
+            camera channel and desired frame interval.
+
+    Returns:
+        dict: JSON response returned by the data-intake service.
+
+    Raises:
+        HTTPException: If the data-intake service is unreachable
+        or returns an unexpected error.
     """
     try:
         logger.debug(f"Trying to connect to: {DATA_INTAKE_URL}/frame_interval")
@@ -827,57 +799,30 @@ async def set_frame_interval(request: FrameIntervalRequest):
 
 
 
-
-
-
-
-# class ChainPredictionResponse(BaseModel):
-#     results: List[Dict[str, Any]]
-
-# # ---- Forwarding Endpoint ----
-# @app.post("/chain_predict", response_model=ChainPredictionResponse)
-# async def forward_chain_predict(request: ChainPredictionRequest):
-#     try:
-#         logger.debug(f"Parameters: {request.parameters},\n model names: {request.model_names},\n images:{request.instances}")
-#         async with httpx.AsyncClient(timeout=120.0) as client:
-#             resp = await client.post(f"{MODEL_DEPLOY_URL}/model/predict/chain", json=request.dict())
-#             resp.raise_for_status()
-#             return resp.json()
-#     except Exception as e:
-#         logger.error(f"Middleware error: {e}")
-#         return {"results": [], "error": str(e)}
-    
-
-# @app.post("/chain_predict", response_model=ChainPredictionResponse)
-# async def forward_chain_predict(request: ChainPredictionRequest):
-#     """
-#     Forward a chain prediction request to the backend model-deploy service.
-#     """
-#     logger.info(f"Forwarding chain prediction: models={request.model_names}, instances={len(request.instances)}")
-    
-#     async with httpx.AsyncClient(timeout=120.0) as client:
-#         try:
-#             resp = await client.post(
-#                 f"{MODEL_DEPLOY_URL}/model/predict/chain",
-#                 json=request.dict()
-#             )
-#             resp.raise_for_status()  # raise exception for 4xx/5xx
-#             return resp.json()
-        
-#         except httpx.HTTPStatusError as e:
-#             logger.error(f"Backend returned error: {e.response.status_code} - {e.response.text}")
-#             raise HTTPException(
-#                 status_code=e.response.status_code,
-#                 detail=f"Backend error: {e.response.text}"
-#             )
-#         except Exception as e:
-#             logger.error(f"Middleware error: {e}")
-#             raise HTTPException(status_code=500, detail=f"Middleware error: {str(e)}")
-
 @app.post("/chain_predict", response_model=ChainPredictionResponse)
 async def forward_chain_predict(request: ChainPredictionRequest):
     """
-    Forward a chain prediction request to the backend model-deploy service.
+    Forward a chained prediction request to the model-deploy service.
+
+    This endpoint acts as a middleware layer that validates and forwards
+    a chained prediction request to the backend model-deploy service,
+    then returns the validated response to the client.
+
+    Args:
+        request (ChainPredictionRequest): Chained prediction request
+            containing model sequence, input instances, and optional
+            parameters.
+
+    Returns:
+        ChainPredictionResponse: The prediction results returned by the
+        backend service after validation.
+
+    Raises:
+        HTTPException: 
+            - 502 Bad Gateway: If the backend model-deploy service
+              returns an error response.
+            - 500 Internal Server Error: If an unexpected middleware
+              error occurs.
     """
     logger.debug(f"Forwarding chain prediction: models={request.model_names}, instances={len(request.instances)}")
     
@@ -902,11 +847,30 @@ async def forward_chain_predict(request: ChainPredictionRequest):
 
     
 
-
-
-
 @app.post("/save_prediction")
 async def save_prediction(request: SavePredictionRequest):
+    """
+    Persist annotated prediction output to disk and MongoDB.
+
+    This endpoint decodes a base64-encoded annotated image, saves it to
+    disk using a timestamped or user-provided name, and stores the
+    associated prediction metadata in the MongoDB ``predictions``
+    collection.
+
+    Args:
+        request (SavePredictionRequest): Annotated image data, detection
+            results, and optional metadata.
+
+    Returns:
+        dict: A dictionary containing:
+            - ``status`` (str): Operation status.
+            - ``id`` (str): MongoDB ObjectId of the saved prediction.
+            - ``path`` (str): Filesystem path to the saved annotated image.
+
+    Raises:
+        HTTPException: If image decoding, file I/O, or database insertion
+        fails.
+    """
     try:
         logger.debug(f"Hit save_prediction: {request.detections} \n {request.metadata}")
         # Decode the image
@@ -947,79 +911,26 @@ async def save_prediction(request: SavePredictionRequest):
 
 
 
-
-
-# # from pymongo import MongoClient
-# import time
-
-# MONGO_URI = "mongodb://mongo:27017"
-# DB_NAME = "your_db_name"  # change to the database you are using
-# COLLECTION_NAME = "metaData"  # or the collection where images are logged
-
-# async def watch_mongo_for_new_images():
-#     """
-#     Watches MongoDB for newly inserted images and sends them to /chain_predict automatically.
-#     """
-#     try:
-#         async with httpx.AsyncClient(timeout=300) as client:
-#             response = await client.get(f"{MODEL_DEPLOY_URL}/model/load",
-#             params={
-#             "model_path": DEFAULT_MODEL_PATHS[0],
-#             "model_name": DEFAULT_MODEL_NAMES[0]
-#         })
-#     except Exception as e:
-#         print(f"[ERROR] Failed to load model: {e}")
-#     try:
-#         async with httpx.AsyncClient(timeout=300) as client:
-#             response = await client.get(f"{MODEL_DEPLOY_URL}/model/load",
-#             params={
-#             "model_path": DEFAULT_MODEL_PATHS[1],
-#             "model_name": DEFAULT_MODEL_NAMES[1]
-#         })
-#     except Exception as e:
-#         print(f"[ERROR] Failed to load model: {e}")
-
-#     logger.debug(f"Succesfully loaded the models: {DEFAULT_MODEL_NAMES}")
-
-
-#     try:
-#         with db.watch([{"$match": {"operationType": "insert"}}]) as stream:
-#             print("[INFO] Watching MongoDB for new image inserts...")
-#             for change in stream:
-#                 doc = change["fullDocument"]
-#                 file_path = doc.get("image_path")
-#                 if not file_path or not os.path.exists(file_path):
-#                     continue
-
-#                 print(f"[INFO] New image detected: {file_path}")
-
-#                 # Read image and encode
-#                 with open(file_path, "rb") as f:
-#                     img_bytes = f.read()
-#                     img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-
-#                 payload = {
-#                     "model_names": DEFAULT_MODEL_NAMES,  # or dynamically pick models
-#                     "instances": [{"image": img_b64}],
-#                     "parameters": {
-#                         "return_annotated_image": True,
-#                         "confidence": 0.25
-#                     }
-#                 }
-
-#                 try:
-#                     # import httpx
-#                     response = httpx.post("http://pig-sorting-api:8001/chain_predict", json=payload)
-#                     response.raise_for_status()
-#                     print(f"[INFO] Chain prediction completed for {file_path}")
-#                 except Exception as e:
-#                     print(f"[ERROR] Failed to send chain prediction for {file_path}: {e}")
-
-#     except Exception as e:
-#         print(f"[ERROR] MongoDB watcher failed: {e}")
-
 @app.post("/api/v1/collector/channels")
 async def channels(request: ChannelsRequest):
+    """
+    Retrieve the list of active and connected camera channels from a network video recorder (NVR).
+
+    This endpoint proxies a request to the data-intake service, which connects
+    to the specified NVR and returns a list of currently active and connected
+    camera channels. Optional authentication credentials can be provided if
+    required by the NVR.
+
+    Args:
+        request (ChannelsRequest): NVR connection details and optional credentials.
+
+    Returns:
+        dict: JSON response from the data-intake service containing camera
+        channel information.
+
+    Raises:
+        HTTPException: If the data-intake service is unreachable or returns an error.
+    """
     logger.debug(f"Reached pig-sorting-api channel request")
     async with httpx.AsyncClient() as client:
         response = await client.post(f"{DATA_INTAKE_URL}/channels",

@@ -15,6 +15,7 @@ import pandas as pd
 import os
 import glob
 import random
+import math
 
 # Helper functions for main.py to load and deploy models
 
@@ -87,7 +88,7 @@ def load_model(model_name: str, model_path: str):
         models[model_name] = model
         return True
     except Exception as e:
-        logger.error(f"Failed to load model {model_name}: {e}")
+        logger.error(f"Failed to load model {model_name} at path {model_path}: {e}")
         return False
 
 
@@ -373,7 +374,7 @@ def deepLabCut_predict(image, model_name, return_annotated_image, p_cutoff=0.15)
         destfolder=str(output_dir),
         save_as_csv=True,
         plotting=return_annotated_image,
-        # plot_skeleton=return_annotated_image,
+        plot_skeleton=return_annotated_image,
         pcutoff=p_cutoff,
         #These values can be set to more explicitly select the model
         # snapshotindex=-1,
@@ -478,6 +479,122 @@ def format_dlc_results(df):
         })
     print(results)
     return results
+
+def polyline_length(segments:list[tuple[float,float]]):
+    """
+    Sums up the length of multiple line segments
+
+    Args:
+        segments (list[tuple[float,float]]): It expects them to be in the format [(x1,y1),(x2,y2),etc]
+    
+    Returns:
+        total_length (float): The summation of the length of all the line segments.
+    """
+    total_length=0
+    for i in range(len(segments)-1):
+        dx = segments[i][0]-segments[i+1][0]
+        dy = segments[i][1] - segments[i+1][1]
+        total_length += math.sqrt(dx*dx + dy*dy)
+    
+    return total_length
+
+def pig_lengths(body_parts:list[Dict]):
+    """
+    Takes in a dictionary of parts with xy coords and calculates the rough dimensions of the pig.
+
+    Args:
+        List: A list of Dict containing at least all of the parts.
+            Dict:
+                - `bodypart` (str): The name of the bodypart
+                - `x` (float): The x coord of the part
+                - `y` (float): The y coord of the part
+    Returns:
+        Dict:
+            - "pig_length" (float): The length of the pig in cenitmeters
+            - "pig_width" (float): The width of the pig in centimeters
+    """
+    body_part = {}
+    for i in body_parts:
+        coords = (i.get("x"), i.get("y"))
+        body_part[i.get("bodypart")] = coords
+
+        
+    # - Spine1
+    # - Shoulder_left
+    # - Shoulder_right
+    # - Center
+    # - Spine2
+    # - Hip_left
+    # - Hip_right
+    # - Tail_base
+
+    # Ensure that we have all of the parts.
+    # Todo: add checks that allow for some flexibility for some missing parts
+    required = [
+        "Spine1", "Center", "Spine2", "Tail_base",
+        "Shoulder_left", "Shoulder_right",
+        "Hip_left", "Hip_right"
+    ]
+
+    for r in required:
+        if r not in body_part:
+            raise ValueError(f"Missing bodypart: {r}")
+
+
+    # calculate the length of each body part in pixels
+    pig_length_px = polyline_length([body_part["Spine1"], 
+                                  body_part["Center"], 
+                                  body_part["Spine2"], 
+                                  body_part["Tail_base"]])
+    
+
+    shoulder_width_px = polyline_length([
+        body_part["Shoulder_left"], 
+        body_part["Shoulder_right"]])
+    
+    
+    hip_width_px = polyline_length([
+        body_part["Hip_left"],
+        body_part["Hip_right"]])
+    
+    print(f"Pig Length in pixels: {pig_length_px}")
+    print(f"Pig Shoulder width in pixels: {shoulder_width_px}")
+    print(f"Pig hip width in pixels: {hip_width_px}")
+    
+    pig_width_px = (hip_width_px + shoulder_width_px)/2
+
+    # convert pixel values to cm
+    # the ratio is dependent on camera and distance from target
+    # pixel_to_cm_ratio= 29.1
+    pixel_to_cm_ratio= 10
+    pig_length = pig_length_px / pixel_to_cm_ratio
+    pig_width = pig_width_px / pixel_to_cm_ratio
+
+    return {"pig_length": pig_length, "pig_width":pig_width}
+
+def pig_weight(pig_length:float,pig_width:float):
+    """
+    Calculates the weight based off of the length and width. 
+    We make assumptions about density and depth.
+
+    Args:
+        pig_length (float): The length of the pig in centimeters
+        pig_width (float):  The width of the pig in centimeters
+
+    Returns:
+        estimated_weight (float): The weight of the pig in grams
+    """
+    # length and width should be in cm
+    depthfactor = 1.3
+    density = 1 # Density of most organic things are pretty close to 1 gram cm^3 
+    estimated_volume = pig_length*pig_width*pig_width*depthfactor
+    estimated_weight = estimated_volume * density
+
+    print(f"Estimated volume cm^3: {estimated_volume}")
+    print(f"Estimated weight in grams: {estimated_weight}")
+
+
+    return estimated_weight
 
 
 

@@ -52,7 +52,7 @@ if st.button("Load Data from MongoDB"):
             if response.status_code == 200:
                 result = response.json()
                 df = pd.DataFrame(result)
-                st.dataframe(df, use_container_width=True, height=800)
+                st.dataframe(df, width='stretch', height=800)
             else:
                 st.error(f"API Error: {response.status_code} - {response.text}")
         except requests.exceptions.RequestException as e:
@@ -98,7 +98,7 @@ if st.button("Fetch Images"):
             #     st.image(
             #         Image.open(BytesIO(base64.b64decode(img["image"]))),
             #         caption=f"{img['filename']} - {img['timestamp']}",
-            #         use_container_width=True
+            #         width='stretch
             #     )
             # Number of images per row
             cols_per_row = 4
@@ -109,7 +109,7 @@ if st.button("Fetch Images"):
                 for j, img_data in enumerate(images[i:i+cols_per_row]):
                     with cols[j]:
                         image = Image.open(BytesIO(base64.b64decode(img_data["image"])))
-                        st.image(image, caption=f"{img_data['filename']}\n{img_data['timestamp']}", use_container_width='always')
+                        st.image(image, caption=f"{img_data['filename']}\n{img_data['timestamp']}", width='stretch')
     
         else:
             st.error(f"API Error: {response.status_code} - {response.text}")

@@ -158,9 +158,7 @@ def set_camera_interval(camera_ids, frame_between_pic):
             else:
                 st.error(f"Errors occurred: {errors}")
 
-# batch_size = st.number_input("How many pictures do you want to take for the selected camera?",
-#                             min_value=0,
-#                             value=5)
+
 
 def trigger_picture(camera_ids, models_to_chain, return_annotated, confidence):
     #trigger picture once
@@ -285,7 +283,7 @@ def display_prediction():
 
 
                 img_bytes = base64.b64decode(annotated_img_b64)
-                st.image(img_bytes, caption="Annotated Result", use_container_width=True)
+                st.image(img_bytes, caption="Annotated Result", width='stretch')
 
                 
 
@@ -310,9 +308,7 @@ display_camera_stream(camera_ids)
 frame_interval = get_user_frame_interval()
 set_camera_interval(camera_ids, frame_interval)
 
-# _, models_to_chain, return_annotated, confidence = set_inference_variables()
 
-# trigger_picture(camera_ids, models_to_chain, return_annotated, confidence)
 
 load_models()
 
@@ -328,113 +324,6 @@ chain_prediction(uploaded_files, models_to_chain, return_annotated, confidence)
 
 display_prediction()
 
-
-
-
-# if st.button("Start the batch job"):
-#     st.write("Starting the batch job")
-
-
-
-
-
-
-
-################################################confiugre models############################################
-# Backend API base URL
-# MODEL_DEPLOY_URL = "http://model-deploy:8601"
-
-# st.title("YOLO Model Inference")
-
-# # Fetch available discovered models
-# @st.cache_data
-# def get_discovered_models():
-#     try:
-#         response = requests.get(f"{MODEL_DEPLOY_URL}/models/discover")
-#         response.raise_for_status()
-#         return response.json().get("models", {})
-#     except Exception as e:
-#         st.error(f"Failed to fetch models: {e}")
-#         return {}
-
-# models = get_discovered_models()
-
-# if not models:
-#     st.warning("No models discovered in the backend.")
-#     st.stop()
-
-# if st.button("Refresh model list"):
-#     models = get_discovered_models()
-
-# # Model selection
-# model_keys = list(models.keys())
-# selected_model_key = st.selectbox("Select Model", model_keys)
-
-# if st.button("Load Selected Model"):
-#     with st.spinner("Loading model..."):
-#         try:
-#             res = requests.post(f"{MODEL_DEPLOY_URL}/model/load/discovered", json={"model_key": selected_model_key})
-#             res.raise_for_status()
-#             st.success(f"Model '{selected_model_key}' loaded successfully.")
-#         except Exception as e:
-#             st.error(f"Failed to load model: {e}")
-
-# st.markdown("---")
-
-# Upload image
-# uploaded_file = st.file_uploader("Upload an Image", type=["jpg", "jpeg", "png"])
-
-# Confidence threshold slider
-# confidence = st.slider("Confidence Threshold", 0.0, 1.0, 0.5, 0.05)
-
-# Toggle for annotated image
-# return_annotated = st.checkbox("Return Annotated Image", value=True)
-
-
-
-########################################
-
-# st.title("🐷 Pig Sorting Demo")
-
-# Upload images
-
-
-
-
-# uploaded_files, models_to_chain, return_annotated, confidence = set_inference_variables()
-
-
-
-
-
-
-# chain_prediction(uploaded_files, models_to_chain, return_annotated, confidence)
-
-# def inspect_types_streamlit(obj, indent=0):
-#     """Recursively inspect the type of an object and display in Streamlit."""
-#     prefix = "  " * indent
-
-#     # Show the object type and value (for simple objects)
-#     if isinstance(obj, (int, float, str, bool, type(None))):
-#         st.write(f"{prefix}{type(obj).__name__}: {repr(obj)}")
-#     else:
-#         st.write(f"{prefix}{type(obj).__name__}")
-
-#     # Handle nested structures
-#     if isinstance(obj, dict):
-#         for key, value in obj.items():
-#             with st.expander(f"{prefix}Key ({type(key).__name__}): {repr(key)}", expanded=False):
-#                 inspect_types_streamlit(value, indent + 1)
-
-#     elif isinstance(obj, (list, tuple, set)):
-#         for i, item in enumerate(obj):
-#             with st.expander(f"{prefix}Index {i}", expanded=False):
-#                 inspect_types_streamlit(item, indent + 1)
-
-
-
-
-# display_prediction()
 
 
 
