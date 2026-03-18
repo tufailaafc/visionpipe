@@ -501,6 +501,7 @@ def polyline_length(segments:list[tuple[float,float]]):
 def pig_lengths(body_parts:list[Dict]):
     """
     Takes in a dictionary of parts with xy coords and calculates the rough dimensions of the pig.
+    If the dimensions are outside the measure of deviation we will return -1
 
     Args:
         List: A list of Dict containing at least all of the parts.
@@ -510,15 +511,14 @@ def pig_lengths(body_parts:list[Dict]):
                 - `y` (float): The y coord of the part
     Returns:
         Dict:
-            - "pig_length" (float): The length of the pig in cenitmeters
-            - "pig_width" (float): The width of the pig in centimeters
+            - "pig_length" (float): The length of the pig in cenitmeters returns -1 if deemed invalid
+            - "pig_width" (float): The width of the pig in centimeters returns -1 if deemed invalid
     """
     body_part = {}
     for i in body_parts:
         coords = (i.get("x"), i.get("y"))
         body_part[i.get("bodypart")] = coords
 
-        
     # - Spine1
     # - Shoulder_left
     # - Shoulder_right
@@ -569,6 +569,20 @@ def pig_lengths(body_parts:list[Dict]):
     pixel_to_cm_ratio= 10
     pig_length = pig_length_px / pixel_to_cm_ratio
     pig_width = pig_width_px / pixel_to_cm_ratio
+
+    # check to see if the length and width makes some level of sense
+    if pig_length > 145 or pig_length < 25:
+        pig_length = -1
+
+    if pig_width > 70 or pig_width < 10:
+        pig_width = -1 
+
+    length_to_width_ratio = pig_width/pig_length
+
+    if length_to_width_ratio > 0.65 or length_to_width_ratio < 0.25:
+        print(f"length to width ratio: {length_to_width_ratio}")
+        pig_width = -1
+        pig_length = -1
 
     return {"pig_length": pig_length, "pig_width":pig_width}
 

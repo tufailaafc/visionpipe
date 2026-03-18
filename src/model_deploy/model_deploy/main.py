@@ -289,6 +289,10 @@ async def predict_chain(request: ChainPredictionRequest):
 
 
                     detections = app_model.format_dlc_results(results)
+                    pig_dimensions = app_model.pig_lengths(detections)
+                    pig_weight = app_model.pig_weight(pig_dimensions.get("pig_length"),pig_dimensions.get("pig_width"))
+                    detections.append(pig_dimensions)
+                    detections.append({"weight":pig_weight})
 
                     formatted_results = {
                         "model": model_name,

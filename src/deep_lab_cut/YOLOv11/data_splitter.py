@@ -19,7 +19,7 @@ LABELS_DIR = f"{ROOT_DIR}yolo_labels"
 # This is where the split data folder is or will be created
 OUT_DIR = f"{ROOT_DIR}training_dataset"
 
-# The ratio we are splitting our by should total exactly 1 when all values are added.
+# The ratio we are splitting by, should total to exactly 1 when all values are added.
 train_ratio = 0.8
 val_ratio = 0.1
 test_ratio = 0.1

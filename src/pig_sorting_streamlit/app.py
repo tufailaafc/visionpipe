@@ -265,19 +265,26 @@ def display_prediction():
                     if detections:
                         for det in detections:
                             # Display Yolo Classification formatted predictions
-                            label = det.get("class")
-                            conf = det.get("confidence", 0)
-                            if label != None:
+                            if 'yolo' in step['model'].lower():
+                                label = det.get("class")
+                                conf = det.get("confidence", 0)
+                                # if label != None:
                                 st.write(f"- `{label}` (confidence: {conf:.2f})")
 
                             # Display DeepLabCut formatted predicitions
-                            bodypart = det.get("bodypart") 
-                            x_coord = det.get("x")
-                            y_coord = det.get("y")
-                            likelihood = det.get("likelihood")
-                            if bodypart != None:
-                                st.write(f"- `{bodypart}` (confidence: {likelihood:.2f}) `Coords(x,y)` ({x_coord:.2f},{y_coord:.2f})")
-
+                            if 'deeplabcut' in step['model'].lower():
+                                bodypart = det.get("bodypart") 
+                                x_coord = det.get("x")
+                                y_coord = det.get("y")
+                                likelihood = det.get("likelihood")
+    
+                                if bodypart != None:
+                                    st.write(f"- `{bodypart}` (confidence: {likelihood:.2f}) `Coords(x,y)` ({x_coord:.2f},{y_coord:.2f})")
+                        if 'deeplabcut' in step['model'].lower():
+                            length = detections[8].get("pig_length",-1)
+                            width = detections[8].get("pig_width",-1)
+                            weight = detections[9].get("weight",-1)   
+                            st.write(f"- `Weight grams` ({weight:.2f}) `Length centimeteres` ({length:.2f}) `Width centimeters` ({width:.2f})")
                     else:
                         st.write("_No detections_")
 
