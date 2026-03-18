@@ -17,7 +17,15 @@ src/deep_lab_cut/PorkAnalysis-WG-2025-12-10/evaluation-results-pytorch/iteration
 .env
 src/pig-sorting-streamlit/.streamlit/secrets.toml
 *packages
-models
+models/*
+!models
+models/DeepLabCut/*
+!models/DeepLabCut
+!models/DeepLabCut/.gitkeep
+
+models/YOLO/*
+!models/YOLO/
+!models/YOLO/.gitkeep
 visionpipe
 *__pycache__
 docs
