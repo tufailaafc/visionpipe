@@ -37,9 +37,18 @@ pip install "deeplabcut[gui]"
 ```
 ^ This is the one I did - Nathaniel Yeo
 
+^ For me, the following worked (note the "--pre" option) - Muhammad Tufail
+```bash
+pip install --pre deeplabcut[gui]
+```
+
 May need to downgrade to: 
 ```bash
 pip install pandas==2.1.4 - Nathaniel Yeo
+```
+Once installed, you can start the DLC gui as:
+```bash
+python -m deeplabcut
 ```
 
 Modules
