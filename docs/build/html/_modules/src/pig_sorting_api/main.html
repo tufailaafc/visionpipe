@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>src.pig_sorting_api.main &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.pig_sorting_api.main</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">FastAPI API for meat evaluation and image processing pipeline.</span>
+
+<span class="sd">This module provides:</span>
+<span class="sd">- Asynchronous MongoDB integration using Motor.</span>
+<span class="sd">- Endpoints for retrieving metadata and images.</span>
+<span class="sd">- Endpoints for triggering model training and chain predictions.</span>
+<span class="sd">- A MongoDB watcher to automatically process newly inserted images.</span>
+<span class="sd">- Utilities to convert images to base64, save annotated predictions, and log results.</span>
+
+<span class="sd">Endpoints include:</span>
+<span class="sd">- /api/v1/mongoData          : Fetch all metadata from MongoDB.</span>
+<span class="sd">- /api/v1/images/            : Fetch images between given timestamps.</span>
+<span class="sd">- /api/v1/training/trainer   : Trigger model training.</span>
+<span class="sd">- /api/v1/training/stream_trainer : Stream training logs from GPU container.</span>
+<span class="sd">- /chain_predict             : Forward chain prediction requests to model-deploy.</span>
+<span class="sd">- /save_prediction           : Save annotated prediction results to MongoDB.</span>
+<span class="sd">- /api/v1/collector/capture  : Trigger manual capture of images.</span>
+<span class="sd">- /api/v1/collector/frame_interval : Set camera frame interval.</span>
+
+<span class="sd">Dependencies:</span>
+<span class="sd">- FastAPI</span>
+<span class="sd">- Motor (Async MongoDB client)</span>
+<span class="sd">- httpx (Async HTTP requests)</span>
+<span class="sd">- PIL, OpenCV, NumPy</span>
+<span class="sd">- pymongo, bson</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">File</span><span class="p">,</span> <span class="n">UploadFile</span><span class="p">,</span> <span class="n">Query</span><span class="p">,</span> <span class="n">HTTPException</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span><span class="p">,</span> <span class="n">StreamingResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Body</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PIL</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">io</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">BytesIO</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">client</span><span class="w"> </span><span class="kn">import</span> <span class="n">db</span><span class="c1"># this contains our connection to mongoDB</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pymongo.results</span><span class="w"> </span><span class="kn">import</span> <span class="n">InsertOneResult</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">bson</span><span class="w"> </span><span class="kn">import</span> <span class="n">ObjectId</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">bson</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">aiofiles</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">timezone</span>
+
+
+<span class="c1"># Set to the log level desired, also may stop fastapi from suppressing the logs.</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+
+
+
+
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+    <span class="n">CORSMiddleware</span><span class="p">,</span>
+    <span class="n">allow_origins</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">allow_credentials</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">allow_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">allow_headers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+
+
+<span class="n">DATA_INTAKE_URL</span> <span class="o">=</span> <span class="s2">&quot;http://data-intake:8301&quot;</span> 
+<span class="n">MODEL_TRAINING_URL</span> <span class="o">=</span> <span class="s2">&quot;http://model-training:8401/training/stream&quot;</span>
+<span class="n">MODEL_DEPLOY_URL</span> <span class="o">=</span> <span class="s2">&quot;http://model-deploy:8601&quot;</span>
+<span class="c1">#DEFAULT_MODELS = [&quot;app/models/Proper_Test/70 epochs medium run3/weights/best.pt&quot;,&quot;app/models/Proper_Test/70 epochs medium run3/weights/last.pt&quot;]</span>
+<span class="c1"># These can be called whatever you want.</span>
+<span class="n">DEFAULT_MODEL_NAMES</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;70run3Best&quot;</span><span class="p">,</span> <span class="s2">&quot;70run3Last&quot;</span><span class="p">]</span>
+<span class="c1"># These are the relative paths inside of the model-deploy container and must be inside of the models folder.</span>
+<span class="n">DEFAULT_MODEL_PATHS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;/app/models/YOLO/Proper_Test/70 epochs medium run3/weights/best.pt&quot;</span><span class="p">,</span><span class="s2">&quot;/app/models/YOLO/Proper_Test/70 epochs medium run3/weights/last.pt&quot;</span><span class="p">]</span>
+
+
+<span class="c1"># For automatic processing of the images saved in mongo</span>
+<span class="n">CATCHUP_WINDOW_MINUTES</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">STATE_COLLECTION</span> <span class="o">=</span> <span class="s2">&quot;watcher_state&quot;</span>
+<span class="n">STATE_ID</span> <span class="o">=</span> <span class="s2">&quot;mongo_poller&quot;</span>  <span class="c1"># unique key for this watcher</span>
+
+
+
+
+<div class="viewcode-block" id="CaptureRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.CaptureRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CaptureRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Request model for triggering manual data captures.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        channels (list[int]): List of channel IDs to capture from.</span>
+<span class="sd">        comment (str | None): Optional global comment applied to all</span>
+<span class="sd">            captured channels.</span>
+<span class="sd">        comments (dict[int, str] | None): Optional per-channel comments</span>
+<span class="sd">            keyed by channel ID.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">channels</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">comment</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">comments</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+
+<span class="c1"># for updating how often the cameras take pictures, </span>
+<span class="c1"># interval is how many frames between taking pictures and channel is the camera channel it is connected to.</span>
+<div class="viewcode-block" id="FrameIntervalRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.FrameIntervalRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FrameIntervalRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Request model for updating camera frame capture intervals.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        channel (int): Camera channel identifier.</span>
+<span class="sd">        interval (int): Number of frames between image captures.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+
+<span class="c1"># A custom class to ensure we get the input as expected for selecting times for monogoDB</span>
+<div class="viewcode-block" id="TimesRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.TimesRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TimesRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">times</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="InferenceRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.InferenceRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">InferenceRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">model_name</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">image_base64</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">confidence</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">return_annotated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span></div>
+
+
+
+<span class="c1"># ---- Schemas (mirrors backend for model-deploy) ----</span>
+<div class="viewcode-block" id="ModelResult">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.ModelResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ModelResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">model</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">detections</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>
+    <span class="n">detection_count</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+<div class="viewcode-block" id="ChainResult">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.ChainResult">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChainResult</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">chain</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">ModelResult</span><span class="p">]</span>
+    <span class="n">annotated_image</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="ChainPredictionResponse">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.ChainPredictionResponse">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChainPredictionResponse</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+    <span class="n">predictions</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span></div>
+
+
+
+<div class="viewcode-block" id="ChainPredictionRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.ChainPredictionRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChainPredictionRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Request model for chained model predictions.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        model_names (List[str]): Ordered list of model identifiers to</span>
+<span class="sd">            execute as a prediction chain.</span>
+<span class="sd">        instances (List[Dict[str, str]]): List of input instances to be</span>
+<span class="sd">            passed through the model chain. Each dictionary represents</span>
+<span class="sd">            a single instance and must conform to the backend model</span>
+<span class="sd">            input schema which expects the List to contain base64 encoded images.</span>
+<span class="sd">        parameters (Optional[Dict[str, Any]]): Optional configuration</span>
+<span class="sd">            parameters forwarded to the backend prediction service.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">instances</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span>
+    <span class="n">parameters</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<span class="c1"># Define request model</span>
+<div class="viewcode-block" id="SavePredictionRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.SavePredictionRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SavePredictionRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Request model for saving annotated prediction results.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        annotated_image (str): Base64-encoded image containing model</span>
+<span class="sd">            annotations (e.g., bounding boxes, labels).</span>
+<span class="sd">        detections (List[Dict[str, Any]]): List of detection results such</span>
+<span class="sd">            as bounding boxes, class labels, and confidence scores.</span>
+<span class="sd">        metadata (Optional[Dict[str, Any]]): Optional additional metadata</span>
+<span class="sd">            associated with the prediction.</span>
+<span class="sd">        ImageName (Optional[str]): Optional base name for the saved image</span>
+<span class="sd">            file. If not provided, a timestamp-based name is used.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">annotated_image</span><span class="p">:</span> <span class="nb">str</span>                  <span class="c1"># base64-encoded image</span>
+    <span class="n">detections</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span>      <span class="c1"># bounding boxes, confidences, etc.</span>
+    <span class="n">metadata</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">ImageName</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="ChannelsRequest">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.ChannelsRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChannelsRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Request model for retrieving active and connected camera ids.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        username (str): The username to log into the NVR.</span>
+<span class="sd">        password (str): The password to log into the NVR.</span>
+<span class="sd">        nvr_ip (str): The ip to log into the NVR.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">username</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">password</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">nvr_ip</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+<div class="viewcode-block" id="SwineDataSave">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.SwineDataSave">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">SwineDataSave</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Request model for saving data produced from the swine unit.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        pen (str): A string containing the idetifier for the pen.</span>
+<span class="sd">        rfid (str): A string containing the rfid of the pig that triggered the capture.</span>
+<span class="sd">        comment (Optional(str)): A string holding any comments for this capture.</span>
+<span class="sd">        depth_images (list(str)): A list of depth images encoded in base64.</span>
+<span class="sd">        depth_image_names (list(str)): A list of depth image names that correspond with depth_images.</span>
+<span class="sd">        thermal_images (list(str)): A list of thermal images encoded in base64.</span>
+<span class="sd">        thermal_image_names (list(str)): A list of thermal image names that correspond with thermal_images.</span>
+<span class="sd">        rgb_images (list(str)): A list of rgb images encoded in base64.</span>
+<span class="sd">        rgb_image_names (list(str)): A list of rgb image names that correspond with rgb_images.         </span>
+<span class="sd">        sensor (Optional(Dict[str, Any])): Various sensor data.</span>
+<span class="sd">        timestamp (datetime): A timestamp for when the capture happened. </span>
+<span class="sd">            The timezone is assumed to be utc</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pen</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">rfid</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">comment</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">depth_images</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">depth_image_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">thermal_images</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">thermal_image_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">rgb_images</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">rgb_image_names</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>
+    <span class="n">sensor</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span><span class="n">Any</span><span class="p">]]</span>
+    <span class="n">timestamp</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+
+
+
+<span class="n">CHAIN_PREDICTION_URL</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MODEL_DEPLOY_URL</span><span class="si">}</span><span class="s2">/model/predict/chain&quot;</span>
+
+<div class="viewcode-block" id="load_default_models">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.load_default_models">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_default_models</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load default models into the model-deploy service.</span>
+
+<span class="sd">    This is typically called once at startup to ensure models are available for predictions.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">DEFAULT_MODEL_NAMES</span><span class="p">,</span> <span class="n">DEFAULT_MODEL_PATHS</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MODEL_DEPLOY_URL</span><span class="si">}</span><span class="s2">/model/load&quot;</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;model_name&quot;</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">path</span><span class="p">},</span>
+                <span class="p">)</span>
+                <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded model: </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="send_to_chain_prediction">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.send_to_chain_prediction">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_to_chain_prediction</span><span class="p">(</span><span class="n">image_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Send an image to the chain prediction endpoint and save the annotated results.</span>
+
+<span class="sd">    This function:</span>
+<span class="sd">    - Reads the image asynchronously.</span>
+<span class="sd">    - Encodes it as base64.</span>
+<span class="sd">    - Sends it to the model-deploy chain prediction endpoint.</span>
+<span class="sd">    - Flattens model detection results and attaches model names.</span>
+<span class="sd">    - Saves the annotated image to disk.</span>
+<span class="sd">    - Stores prediction metadata in MongoDB.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image_path (str): Absolute path to the input image file.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">image_path</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image path does not exist: </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">aiofiles</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">img_bytes</span> <span class="o">=</span> <span class="k">await</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="n">img_b64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">img_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+
+        <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;model_names&quot;</span><span class="p">:</span> <span class="n">DEFAULT_MODEL_NAMES</span><span class="p">,</span>
+            <span class="s2">&quot;instances&quot;</span><span class="p">:</span> <span class="p">[{</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">img_b64</span><span class="p">}],</span>
+            <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;return_annotated_image&quot;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="mf">0.25</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+
+        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">120</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="n">CHAIN_PREDICTION_URL</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Chain prediction completed for </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+
+        <span class="n">predictions</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;predictions&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">predictions</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No predictions returned for </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">chain</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;chain&quot;</span><span class="p">]</span>
+        <span class="n">annotated_image</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;annotated_image&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="c1"># detections = [step[&quot;detections&quot;] for step in chain]</span>
+        <span class="n">detections</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">:</span>
+            <span class="n">model_name</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detections&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+                <span class="c1"># Add model name to each detection</span>
+                <span class="n">det_with_model</span> <span class="o">=</span> <span class="p">{</span><span class="o">**</span><span class="n">det</span><span class="p">,</span> <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">model_name</span><span class="p">}</span>
+                <span class="n">detections</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">det_with_model</span><span class="p">)</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;models&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">step</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">chain</span><span class="p">]}</span>
+
+        <span class="c1"># Call save_prediction</span>
+        <span class="n">file_name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">image_path</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">save_req</span> <span class="o">=</span> <span class="n">SavePredictionRequest</span><span class="p">(</span>
+            <span class="n">annotated_image</span><span class="o">=</span><span class="n">annotated_image</span><span class="p">,</span>
+            <span class="n">detections</span><span class="o">=</span><span class="n">detections</span><span class="p">,</span>
+            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span>
+            <span class="n">ImageName</span><span class="o">=</span><span class="n">file_name</span>
+        <span class="p">)</span>
+        <span class="c1">#logger.info(&quot;Final save_prediction payload:\n%s&quot;, json.dumps(save_req.dict(), indent=2))</span>
+
+        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+            <span class="n">save_resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;http://pig-sorting-api:8001/save_prediction&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">save_req</span><span class="o">.</span><span class="n">dict</span><span class="p">())</span>
+            <span class="n">save_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prediction saved for </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to send chain prediction for </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="get_last_checkpoint">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.get_last_checkpoint">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_last_checkpoint</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load the last checkpoint timestamp from MongoDB.</span>
+
+<span class="sd">    If no checkpoint is found, returns the current time minus the catch-up window.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        datetime: The timestamp of the last processed document.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">state</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="p">[</span><span class="n">STATE_COLLECTION</span><span class="p">]</span><span class="o">.</span><span class="n">find_one</span><span class="p">({</span><span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">STATE_ID</span><span class="p">})</span>
+    <span class="k">if</span> <span class="n">state</span> <span class="ow">and</span> <span class="s2">&quot;last_check&quot;</span> <span class="ow">in</span> <span class="n">state</span><span class="p">:</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;last_check&quot;</span><span class="p">]</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Resuming from saved checkpoint: </span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ts</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ts</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">CATCHUP_WINDOW_MINUTES</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No saved checkpoint, using catch-up: </span><span class="si">{</span><span class="n">ts</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ts</span></div>
+
+
+
+<div class="viewcode-block" id="save_checkpoint">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.save_checkpoint">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_checkpoint</span><span class="p">(</span><span class="n">ts</span><span class="p">:</span> <span class="n">datetime</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save the last processed timestamp to MongoDB.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ts (datetime): Timestamp to save as the last processed checkpoint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">await</span> <span class="n">db</span><span class="p">[</span><span class="n">STATE_COLLECTION</span><span class="p">]</span><span class="o">.</span><span class="n">update_one</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">&quot;_id&quot;</span><span class="p">:</span> <span class="n">STATE_ID</span><span class="p">},</span>
+        <span class="p">{</span><span class="s2">&quot;$set&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;last_check&quot;</span><span class="p">:</span> <span class="n">ts</span><span class="p">}},</span>
+        <span class="n">upsert</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="c1">#TODO change mongo to a replica database so that we can subscribe to changes rather than polling.</span>
+<div class="viewcode-block" id="watch_mongo">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.watch_mongo">[docs]</a>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">watch_mongo</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Poll MongoDB for new images instead of using change streams.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Starting MongoDB polling...&quot;</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">load_default_models</span><span class="p">()</span>
+
+    <span class="n">last_check</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_last_checkpoint</span><span class="p">()</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+
+
+            <span class="c1"># if there are new images then send them through the prediction engine.</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Trying to get metaData&quot;</span><span class="p">)</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="s2">&quot;metaData&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span>
+                <span class="s2">&quot;date_time&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;$gt&quot;</span><span class="p">:</span> <span class="n">last_check</span><span class="p">}</span>
+            <span class="p">})</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="s2">&quot;date_time&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># sort ascending to move checkpoint correctly</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Created cursor&quot;</span><span class="p">)</span>
+            <span class="n">docs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cursor</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Got the documents&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">docs</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Found </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">docs</span><span class="p">)</span><span class="si">}</span><span class="s2"> new docs since </span><span class="si">{</span><span class="n">last_check</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">docs</span><span class="p">:</span>
+                <span class="n">image_path</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_path&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">image_path</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;New image detected: </span><span class="si">{</span><span class="n">image_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">await</span> <span class="n">send_to_chain_prediction</span><span class="p">(</span><span class="n">image_path</span><span class="p">)</span>
+
+                <span class="c1"># update checkpoint after each doc</span>
+                <span class="k">if</span> <span class="s2">&quot;date_time&quot;</span> <span class="ow">in</span> <span class="n">doc</span><span class="p">:</span>
+                    <span class="n">last_check</span> <span class="o">=</span> <span class="n">doc</span><span class="p">[</span><span class="s2">&quot;date_time&quot;</span><span class="p">]</span>
+                    <span class="k">await</span> <span class="n">save_checkpoint</span><span class="p">(</span><span class="n">last_check</span><span class="p">)</span>
+
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Mongo polling failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">60</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="start_watcher_loop">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.start_watcher_loop">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">start_watcher_loop</span><span class="p">():</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Trying to start watcher loop&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Start the async watcher in an asyncio loop.&quot;&quot;&quot;</span>
+    <span class="n">loop</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">get_event_loop</span><span class="p">()</span>
+    <span class="n">loop</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">watch_mongo</span><span class="p">())</span></div>
+
+
+<span class="c1"># Call this in your FastAPI startup event</span>
+<span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="n">start_watcher_loop</span><span class="p">()</span>
+
+
+
+
+
+
+
+
+
+<div class="viewcode-block" id="image_to_base64">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.image_to_base64">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">image_to_base64</span><span class="p">(</span><span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convert an OpenCV image (NumPy array) to a base64-encoded PNG string.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        img (np.ndarray): Input image. Can be grayscale or RGB.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: Base64-encoded string of the PNG image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Ensure image is in BGR format for cv2.imencode as PIL loads in RGB</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">img</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span> <span class="c1"># Check if it&#39;s a 3-channel image</span>
+        <span class="n">img_bgr</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_RGB2BGR</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">img_bgr</span> <span class="o">=</span> <span class="n">img</span> <span class="c1"># Assume it&#39;s already in a suitable format or grayscale</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">buffer</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imencode</span><span class="p">(</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="n">img_bgr</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">buffer</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
+
+
+
+
+<span class="c1"># Will send all records to the user</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/v1/mongoData&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">JSONResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_mongo_data</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieve all metadata records from the MongoDB collection.</span>
+
+<span class="sd">    This endpoint queries the ``metaData`` collection in MongoDB,</span>
+<span class="sd">    converts the result cursor into JSON-serializable Python objects,</span>
+<span class="sd">    and returns all records to the client.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list[dict]: A list of metadata records retrieved from the</span>
+<span class="sd">        ``metaData`` MongoDB collection.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If an unexpected error occurs while accessing</span>
+<span class="sd">        the database or serializing the results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;/api/v1/mongoData/ endpoint hit&quot;</span><span class="p">)</span>
+        <span class="n">db_result</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="s2">&quot;metaData&quot;</span><span class="p">]</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">db_result</span><span class="o">.</span><span class="n">find</span><span class="p">()</span>
+
+        <span class="c1">#Parse JSON string into python objects to allow creation of a dataframe</span>
+        <span class="n">meta_data_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">bson</span><span class="o">.</span><span class="n">json_util</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">result</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">meta_data_json</span>
+            
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error getting data :</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+    
+
+
+<span class="c1"># Will send all of the images selected between certain times</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/v1/images/&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">JSONResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_images_by_date</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">TimesRequest</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieve all images captured within a specified time range.</span>
+
+<span class="sd">    This endpoint accepts a start and end timestamp, queries the</span>
+<span class="sd">    ``metaData`` MongoDB collection for records within that range,</span>
+<span class="sd">    loads the corresponding image files from disk, and returns them</span>
+<span class="sd">    as base64-encoded strings along with metadata.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (TimesRequest): Request body containing a list of two</span>
+<span class="sd">            ISO 8601 formatted timestamps representing the start and</span>
+<span class="sd">            end of the desired time range.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list[dict]: A list of dictionaries, each containing:</span>
+<span class="sd">            - ``filename`` (str): Name of the image file.</span>
+<span class="sd">            - ``image`` (str): Base64-encoded image data.</span>
+<span class="sd">            - ``timestamp`` (str): ISO 8601 formatted capture time.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If an unexpected error occurs while querying the</span>
+<span class="sd">        database, reading image files, or encoding the images.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;/api/v1/images/ endpoint hit&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># Get the data into a  form that will help us query the database</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">times</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time 1: </span><span class="si">{</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">, time 2: </span><span class="si">{</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">start_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">end_date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">fromisoformat</span><span class="p">(</span><span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># get all records within the provided timeframe</span>
+        <span class="n">db_result</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="s2">&quot;metaData&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">({</span>
+            <span class="s2">&quot;date_time&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;$gte&quot;</span><span class="p">:</span> <span class="n">start_date</span><span class="p">,</span>
+                <span class="s2">&quot;$lte&quot;</span><span class="p">:</span> <span class="n">end_date</span>
+            <span class="p">}</span>
+        <span class="p">})</span>
+
+        <span class="c1"># Iterate through all records and store them in a list</span>
+        <span class="n">images_base64</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">doc</span> <span class="ow">in</span> <span class="n">db_result</span><span class="p">:</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;image_path&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">path</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">img_file</span><span class="p">:</span>
+                    <span class="n">b64_str</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">img_file</span><span class="o">.</span><span class="n">read</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+                    <span class="n">images_base64</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                        <span class="s2">&quot;filename&quot;</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+                        <span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">b64_str</span><span class="p">,</span>
+                        <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">doc</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;date_time&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+                    <span class="p">})</span>
+
+
+        <span class="k">return</span> <span class="n">images_base64</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error fetching images by date: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/v1/training/trainer&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">JSONResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">run_training</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="n">dataset_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="n">project_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">&quot;default_project&quot;</span><span class="p">),</span>
+    <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">&quot;run_001&quot;</span><span class="p">)</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Start a YOLO training job with the specified parameters.</span>
+
+<span class="sd">    This endpoint forwards a training request to the GPU-enabled</span>
+<span class="sd">    model-training service, waits for training to complete, and logs</span>
+<span class="sd">    the results to the MongoDB ``training_logs`` collection.</span>
+
+<span class="sd">    The following fields are logged to MongoDB:</span>
+<span class="sd">        - ``model_path`` (str): Path to the pretrained model used.</span>
+<span class="sd">        - ``dataset_path`` (str): Location of the training dataset.</span>
+<span class="sd">        - ``model_export_path`` (str): Path to the newly trained model.</span>
+<span class="sd">        - ``project`` (str): Name of the project.</span>
+<span class="sd">        - ``run`` (str): Name of the training run.</span>
+<span class="sd">        - ``train_results`` (str): Training metrics and results.</span>
+<span class="sd">        - ``val_results`` (str): Validation metrics and results.</span>
+<span class="sd">        - ``date_time`` (datetime): Timestamp when training completed.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_path (str): Path to the pretrained YOLO model.</span>
+<span class="sd">        dataset_path (str): Path to the dataset used for training.</span>
+<span class="sd">        project_name (str): Logical name for the training project.</span>
+<span class="sd">        run_name (str): Identifier for this specific training run.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary containing:</span>
+<span class="sd">            - ``message`` (str): Confirmation that training completed.</span>
+<span class="sd">            - ``model_export_path`` (str): Path to the trained model.</span>
+<span class="sd">            - ``train_results`` (str): Training results.</span>
+<span class="sd">            - ``val_results`` (str): Validation results.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If the training service fails, times out,</span>
+<span class="sd">        or logging to the database is unsuccessful.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Training request received&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Send request to model-training container as it has gpu support</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;http://model-training:8401/training/trainer&quot;</span><span class="p">,</span>
+            <span class="n">params</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+            <span class="s2">&quot;dataset_path&quot;</span><span class="p">:</span> <span class="n">dataset_path</span><span class="p">,</span>
+            <span class="s2">&quot;project_name&quot;</span><span class="p">:</span> <span class="n">project_name</span><span class="p">,</span>
+            <span class="s2">&quot;run_name&quot;</span><span class="p">:</span> <span class="n">run_name</span>
+        <span class="p">})</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+        <span class="c1"># Log to MongoDB</span>
+        <span class="n">result_doc</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+            <span class="s2">&quot;dataset_path&quot;</span><span class="p">:</span> <span class="n">dataset_path</span><span class="p">,</span>
+            <span class="s2">&quot;model_export_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_export_path&quot;</span><span class="p">)),</span>
+            <span class="s2">&quot;project&quot;</span><span class="p">:</span> <span class="n">project_name</span><span class="p">,</span>
+            <span class="s2">&quot;run&quot;</span><span class="p">:</span> <span class="n">run_name</span><span class="p">,</span>
+            <span class="s2">&quot;train_results&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;train_results&quot;</span><span class="p">)),</span>
+            <span class="s2">&quot;val_results&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;val_results&quot;</span><span class="p">)),</span>
+            <span class="s2">&quot;date_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span>
+        <span class="p">}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training Logs: </span><span class="si">{</span><span class="n">result_doc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">db</span><span class="p">[</span><span class="s2">&quot;training_logs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">result_doc</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;Training completed!&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;model_export_path&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;model_export_path&quot;</span><span class="p">)),</span>
+            <span class="s2">&quot;train_results&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;train_results&quot;</span><span class="p">)),</span>
+            <span class="s2">&quot;val_results&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;val_results&quot;</span><span class="p">)),</span>
+        <span class="p">}</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Training failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+    
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/v1/training/stream_trainer&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">proxy_training_stream</span><span class="p">(</span>
+    <span class="n">model_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="n">dataset_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+    <span class="n">project_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">&quot;default_project&quot;</span><span class="p">),</span>
+    <span class="n">run_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="s2">&quot;run_001&quot;</span><span class="p">),</span>
+    <span class="n">epochs</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Stream a YOLO training job and log results upon completion.</span>
+
+<span class="sd">    This endpoint forwards a training request to the GPU-enabled</span>
+<span class="sd">    model-training service and streams training progress to the client</span>
+<span class="sd">    using Server-Sent Events (SSE). Once training completes, the final</span>
+<span class="sd">    results are logged to the MongoDB ``training_logs`` collection.</span>
+
+<span class="sd">    The following fields are logged to MongoDB:</span>
+<span class="sd">        - ``model_path`` (str): Path to the pretrained model used.</span>
+<span class="sd">        - ``dataset_path`` (str): Location of the training dataset.</span>
+<span class="sd">        - ``model_export_path`` (str): Path to the newly trained model.</span>
+<span class="sd">        - ``project`` (str): Name of the project.</span>
+<span class="sd">        - ``run`` (str): Name of the training run.</span>
+<span class="sd">        - ``train_results`` (dict | str): Training metrics and results.</span>
+<span class="sd">        - ``val_results`` (dict | str): Validation metrics and results.</span>
+<span class="sd">        - ``date_time`` (datetime): Timestamp when training completed.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_path (str): Path to the pretrained YOLO model.</span>
+<span class="sd">        dataset_path (str): Path to the dataset used for training.</span>
+<span class="sd">        project_name (str): Logical name for the training project.</span>
+<span class="sd">        run_name (str): Identifier for this specific training run.</span>
+<span class="sd">        epochs (int): Number of training epochs to run.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        StreamingResponse: A Server-Sent Events (SSE) stream emitting</span>
+<span class="sd">        JSON-encoded training progress updates and a final completion</span>
+<span class="sd">        event.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If the training service fails, the stream cannot</span>
+<span class="sd">        be established, or logging to the database is unsuccessful.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Streaming training request received&quot;</span><span class="p">)</span>
+
+        <span class="c1"># The parameters to configure the model training</span>
+        <span class="c1"># model_training_url = &quot;http://model-training:8401/training/stream&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+            <span class="s2">&quot;dataset_path&quot;</span><span class="p">:</span> <span class="n">dataset_path</span><span class="p">,</span>
+            <span class="s2">&quot;project_name&quot;</span><span class="p">:</span> <span class="n">project_name</span><span class="p">,</span>
+            <span class="s2">&quot;run_name&quot;</span><span class="p">:</span> <span class="n">run_name</span><span class="p">,</span>
+            <span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="n">epochs</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Async generator to yield streamed training data</span>
+        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">event_stream</span><span class="p">():</span>
+            <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+                <span class="k">async</span> <span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="n">MODEL_TRAINING_URL</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="n">params</span><span class="p">)</span> <span class="k">as</span> <span class="n">response</span><span class="p">:</span>
+                    <span class="k">async</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">aiter_lines</span><span class="p">():</span>
+                        <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;data:&quot;</span><span class="p">):</span>
+                            <span class="n">json_data</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;data: &quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+                            <span class="k">try</span><span class="p">:</span>
+                                <span class="n">parsed</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">json_data</span><span class="p">)</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Streaming event: </span><span class="si">{</span><span class="n">parsed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                                <span class="c1"># Log final result to MongoDB</span>
+                                <span class="k">if</span> <span class="n">parsed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;status&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;done&quot;</span><span class="p">:</span>
+                                    <span class="n">result_doc</span> <span class="o">=</span> <span class="p">{</span>
+                                        <span class="s2">&quot;model_path&quot;</span><span class="p">:</span> <span class="n">model_path</span><span class="p">,</span>
+                                        <span class="s2">&quot;dataset_path&quot;</span><span class="p">:</span> <span class="n">dataset_path</span><span class="p">,</span>
+                                        <span class="s2">&quot;model_export_path&quot;</span><span class="p">:</span> <span class="n">parsed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;path&quot;</span><span class="p">),</span>
+                                        <span class="s2">&quot;project&quot;</span><span class="p">:</span> <span class="n">project_name</span><span class="p">,</span>
+                                        <span class="s2">&quot;run&quot;</span><span class="p">:</span> <span class="n">run_name</span><span class="p">,</span>
+                                        <span class="s2">&quot;train_results&quot;</span><span class="p">:</span> <span class="n">parsed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;train_results&quot;</span><span class="p">),</span>  
+                                        <span class="s2">&quot;val_results&quot;</span><span class="p">:</span> <span class="n">parsed</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;val_results&quot;</span><span class="p">),</span>
+                                        <span class="s2">&quot;date_time&quot;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span>
+                                    <span class="p">}</span>
+                                    <span class="n">db</span><span class="p">[</span><span class="s2">&quot;training_logs&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">result_doc</span><span class="p">)</span>
+                                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Inserted training log for run: </span><span class="si">{</span><span class="n">run_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to parse JSON event: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                            <span class="k">yield</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">line</span><span class="si">}</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="n">StreamingResponse</span><span class="p">(</span><span class="n">event_stream</span><span class="p">(),</span> <span class="n">media_type</span><span class="o">=</span><span class="s2">&quot;text/event-stream&quot;</span><span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Streaming training failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+
+        
+        
+<span class="c1"># Helper function to convert ObjectId to string</span>
+<div class="viewcode-block" id="convert_objectid_to_str">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_api.main.html#src.pig_sorting_api.main.convert_objectid_to_str">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">convert_objectid_to_str</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Recursively convert MongoDB ObjectId values to strings.</span>
+
+<span class="sd">    This function traverses nested dictionaries and lists, replacing</span>
+<span class="sd">    any instances of ``bson.ObjectId`` with their string representation.</span>
+<span class="sd">    All other data types are returned unchanged.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        data (Any): Input data that may contain dictionaries, lists,</span>
+<span class="sd">            or ``ObjectId`` values.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Any: The input data with all ``ObjectId`` instances converted</span>
+<span class="sd">        to strings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">key</span><span class="p">:</span> <span class="n">convert_objectid_to_str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">convert_objectid_to_str</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">data</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">ObjectId</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>  <span class="c1"># Convert ObjectId to string</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">data</span></div>
+
+        
+        
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/v1/collector/capture&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">capture</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">CaptureRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Proxy a manual capture request to the data-collector service.</span>
+
+<span class="sd">    This endpoint forwards a request to the data-collector to trigger</span>
+<span class="sd">    one or more manual captures on the specified channels. Optional</span>
+<span class="sd">    comments may be included globally or per channel.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (CaptureRequest): Capture configuration including</span>
+<span class="sd">            channel identifiers and optional comments.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: JSON response returned by the data-collector service.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If the data-collector service is unreachable</span>
+<span class="sd">        or returns an unexpected error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Capture channels: </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">channels</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DATA_INTAKE_URL</span><span class="si">}</span><span class="s2">/capture/&quot;</span><span class="p">,</span>
+                <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;channels&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">channels</span><span class="p">,</span>
+                      <span class="s2">&quot;comment&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span>
+                      <span class="s2">&quot;comments&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">comments</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error sending capture request: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/v1/collector/frame_interval&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">set_frame_interval</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">FrameIntervalRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Update the frame capture interval for a specific camera.</span>
+
+<span class="sd">    This endpoint proxies a request to the data-intake service to</span>
+<span class="sd">    configure how frequently a camera captures images, based on</span>
+<span class="sd">    a frame interval setting.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (FrameIntervalRequest): Configuration containing the</span>
+<span class="sd">            camera channel and desired frame interval.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: JSON response returned by the data-intake service.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If the data-intake service is unreachable</span>
+<span class="sd">        or returns an unexpected error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Trying to connect to: </span><span class="si">{</span><span class="n">DATA_INTAKE_URL</span><span class="si">}</span><span class="s2">/frame_interval&quot;</span><span class="p">)</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DATA_INTAKE_URL</span><span class="si">}</span><span class="s2">/frame_interval&quot;</span><span class="p">,</span>
+                <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">interval</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error sending frame interval request: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+    
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/chain_predict&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ChainPredictionResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">forward_chain_predict</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">ChainPredictionRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Forward a chained prediction request to the model-deploy service.</span>
+
+<span class="sd">    This endpoint acts as a middleware layer that validates and forwards</span>
+<span class="sd">    a chained prediction request to the backend model-deploy service,</span>
+<span class="sd">    then returns the validated response to the client.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (ChainPredictionRequest): Chained prediction request</span>
+<span class="sd">            containing model sequence, input instances, and optional</span>
+<span class="sd">            parameters.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ChainPredictionResponse: The prediction results returned by the</span>
+<span class="sd">        backend service after validation.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: </span>
+<span class="sd">            - 502 Bad Gateway: If the backend model-deploy service</span>
+<span class="sd">              returns an error response.</span>
+<span class="sd">            - 500 Internal Server Error: If an unexpected middleware</span>
+<span class="sd">              error occurs.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forwarding chain prediction: models=</span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">model_names</span><span class="si">}</span><span class="s2">, instances=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">instances</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">120.0</span><span class="p">)</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MODEL_DEPLOY_URL</span><span class="si">}</span><span class="s2">/model/predict/chain&quot;</span><span class="p">,</span>
+                <span class="n">json</span><span class="o">=</span><span class="n">request</span><span class="o">.</span><span class="n">dict</span><span class="p">()</span>
+            <span class="p">)</span>
+            <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="n">backend_response</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">backend_response</span>  <span class="c1"># this will validate against ChainPredictionResponse</span>
+        
+        <span class="k">except</span> <span class="n">httpx</span><span class="o">.</span><span class="n">HTTPStatusError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backend returned error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">502</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Backend error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Middleware error: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Middleware error: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+    
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/save_prediction&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_prediction</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">SavePredictionRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Persist annotated prediction output to disk and MongoDB.</span>
+
+<span class="sd">    This endpoint decodes a base64-encoded annotated image, saves it to</span>
+<span class="sd">    disk using a timestamped or user-provided name, and stores the</span>
+<span class="sd">    associated prediction metadata in the MongoDB ``predictions``</span>
+<span class="sd">    collection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (SavePredictionRequest): Annotated image data, detection</span>
+<span class="sd">            results, and optional metadata.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary containing:</span>
+<span class="sd">            - ``status`` (str): Operation status.</span>
+<span class="sd">            - ``id`` (str): MongoDB ObjectId of the saved prediction.</span>
+<span class="sd">            - ``path`` (str): Filesystem path to the saved annotated image.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If image decoding, file I/O, or database insertion</span>
+<span class="sd">        fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hit save_prediction: </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">detections</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2"> </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">metadata</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1"># Decode the image</span>
+        <span class="n">img_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">annotated_image</span><span class="p">)</span>
+
+        <span class="c1"># Build folder + file name</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+        <span class="n">day_str</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ts_str</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%H_%M_%S&quot;</span><span class="p">)</span>
+        <span class="n">out_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;/app/images/inference&quot;</span><span class="p">,</span> <span class="n">day_str</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">ImageName</span> <span class="o">==</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ts_str</span><span class="si">}</span><span class="s2">_annotated.jpg&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">ImageName</span><span class="si">}</span><span class="s2">_annotated.jpg&quot;</span><span class="p">)</span>
+        <span class="c1"># Save file</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">img_bytes</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved annotated image → </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Build Mongo document</span>
+        <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;image_path&quot;</span><span class="p">:</span> <span class="n">file_path</span><span class="p">,</span>
+            <span class="s2">&quot;detections&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">detections</span><span class="p">,</span>
+            <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">metadata</span> <span class="ow">or</span> <span class="p">{},</span>
+            <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="n">now</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="p">[</span><span class="s2">&quot;predictions&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved prediction metadata to MongoDB with id </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">inserted_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">inserted_id</span><span class="p">),</span> <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="n">file_path</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in save_prediction: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+    
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/v1/collector/channels&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">channels</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">ChannelsRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieve the list of active and connected camera channels from a network video recorder (NVR).</span>
+
+<span class="sd">    This endpoint proxies a request to the data-intake service, which connects</span>
+<span class="sd">    to the specified NVR and returns a list of currently active and connected</span>
+<span class="sd">    camera channels. Optional authentication credentials can be provided if</span>
+<span class="sd">    required by the NVR.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (ChannelsRequest): NVR connection details and optional credentials.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: JSON response from the data-intake service containing camera</span>
+<span class="sd">        channel information.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If the data-intake service is unreachable or returns an error.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reached pig-sorting-api channel request&quot;</span><span class="p">)</span>
+    <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">DATA_INTAKE_URL</span><span class="si">}</span><span class="s2">/channels&quot;</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                        <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">password</span><span class="p">,</span>
+                        <span class="s2">&quot;nvr_ip&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">nvr_ip</span><span class="p">})</span>
+        
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Returning values inside of pig-sorting-api: </span><span class="si">{</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/api/v1/collector/swine_data_save&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">save_swine_data</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">SwineDataSave</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Persist images and pen sensor readings output to disk and MongoDB.</span>
+
+<span class="sd">    This endpoint decodes base64-encoded annotated images, saves it to</span>
+<span class="sd">    disk using a timestamped or user-provided name, and stores the</span>
+<span class="sd">    associated prediction metadata such as sensor readings and predicted weight in the MongoDB ``predictions``</span>
+<span class="sd">    collection.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request(SwineDataSave): </span>
+<span class="sd">            - pen (str): A string containing the idetifier for the pen.</span>
+<span class="sd">            - rfid (str): A string containing the rfid of the pig that triggered the capture.</span>
+<span class="sd">            - comment (Optional(str)): A string holding any comments for this capture.</span>
+<span class="sd">            - depth_images (list(str)): A list of depth images encoded in base64.</span>
+<span class="sd">            - depth_image_names (list(str)): A list of depth image names that correspond with depth_images.</span>
+<span class="sd">            - thermal_images (list(str)): A list of thermal images encoded in base64.</span>
+<span class="sd">            - thermal_image_names (list(str)): A list of thermal image names that correspond with thermal_images.</span>
+<span class="sd">            - rgb_images (list(str)): A list of rgb images encoded in base64.</span>
+<span class="sd">            - rgb_image_names (list(str)): A list of rgb image names that correspond with rgb_images.         </span>
+<span class="sd">            - sensor (Dict[str, Any]): Various sensor data.</span>
+<span class="sd">            - timestamp (datetime): A timestamp for when the capture happened. The timezone is assumed to be utc</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary containing:</span>
+<span class="sd">            - ``status`` (str): Operation status.</span>
+<span class="sd">            - ``id`` (str): MongoDB ObjectId of the saved prediction.</span>
+<span class="sd">            - ``path`` (str): Filesystem path to the saved annotated image.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If image decoding, file I/O, or database insertion</span>
+<span class="sd">        fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Hit swine_data_save: </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">rfid</span><span class="si">}</span><span class="s2"> </span><span class="se">\n</span><span class="s2"> </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">pen</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">request</span><span class="o">.</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="c1">##################################### Decode the images and save them to the file system while keeping track of location and meta data.</span>
+        <span class="n">depth_image_paths</span><span class="p">:</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">thermal_image_paths</span><span class="p">:</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rgb_image_paths</span><span class="p">:</span><span class="nb">list</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Build folder to store the images</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+        <span class="n">day_str</span> <span class="o">=</span> <span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">out_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;/app/images/inference/swine&quot;</span><span class="p">,</span> <span class="n">day_str</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">save_base64_image_with_name</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">out_dir</span><span class="p">):</span>
+            <span class="c1">#decode and save each file to the created directory</span>
+            <span class="n">img_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="nb">bytes</span><span class="p">)</span>
+
+            <span class="c1">#specify the path/name</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">out_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1"># Save file</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_path</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">img_bytes</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved annotated image → </span><span class="si">{</span><span class="n">file_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">file_path</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">depth_images</span><span class="p">)):</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">save_base64_image_with_name</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">depth_image_names</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">request</span><span class="o">.</span><span class="n">depth_images</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">out_dir</span><span class="p">)</span>
+            <span class="n">depth_image_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">thermal_images</span><span class="p">)):</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">save_base64_image_with_name</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">thermal_image_names</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">request</span><span class="o">.</span><span class="n">thermal_images</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">out_dir</span><span class="p">)</span>
+            <span class="n">thermal_image_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">rgb_images</span><span class="p">)):</span>
+            <span class="n">file_path</span> <span class="o">=</span> <span class="n">save_base64_image_with_name</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">rgb_image_names</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">request</span><span class="o">.</span><span class="n">rgb_images</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">out_dir</span><span class="p">)</span>
+            <span class="n">rgb_image_paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">file_path</span><span class="p">)</span>
+
+        <span class="c1">#hook up to model for weight prediction</span>
+        <span class="c1">#dummy for some data replace with actual weight prediction</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">random</span>
+        <span class="n">predicted_weight</span><span class="p">:</span><span class="nb">float</span> <span class="o">=</span> <span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">70</span><span class="p">,</span><span class="mi">120</span><span class="p">)</span>
+
+        <span class="c1">#transform the timestamp into a datetime object for effecient sorting and lookup</span>
+        <span class="n">timestamp_object</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">timestamp</span><span class="p">,</span><span class="s2">&quot;%Y%m</span><span class="si">%d</span><span class="s2">_%H%M%S_</span><span class="si">%f</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+        <span class="c1"># Build Mongo document</span>
+        <span class="n">doc</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;pen&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">pen</span><span class="p">,</span>
+            <span class="s2">&quot;rfid&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">rfid</span><span class="p">,</span>
+            <span class="s2">&quot;comment&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">comment</span><span class="p">,</span>
+            <span class="s2">&quot;depth_images&quot;</span><span class="p">:</span> <span class="n">depth_image_paths</span><span class="p">,</span>
+            <span class="s2">&quot;thermal_images&quot;</span><span class="p">:</span> <span class="n">thermal_image_paths</span><span class="p">,</span>
+            <span class="s2">&quot;rgb_images&quot;</span><span class="p">:</span> <span class="n">rgb_image_paths</span><span class="p">,</span>
+            <span class="s2">&quot;sensor&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">sensor</span><span class="p">,</span>
+            <span class="s2">&quot;timestamp&quot;</span><span class="p">:</span> <span class="n">timestamp_object</span><span class="p">,</span>
+            <span class="s2">&quot;predicted_weight&quot;</span><span class="p">:</span> <span class="n">predicted_weight</span>
+        <span class="p">}</span>
+
+        <span class="c1">#insert mongo document into the database</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="p">[</span><span class="s2">&quot;swinedata&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">doc</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved prediction metadata to MongoDB with id </span><span class="si">{</span><span class="n">result</span><span class="o">.</span><span class="n">inserted_id</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;id&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">inserted_id</span><span class="p">),</span> <span class="s2">&quot;paths&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">depth_image_paths</span><span class="p">,</span><span class="n">thermal_image_paths</span><span class="p">,</span><span class="n">rgb_image_paths</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in swine_data_save: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+    
+
+
+<span class="c1"># Will send all records to the user</span>
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/api/v1/mongoData/swinedata&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">JSONResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_swinedata</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Retrieve all swinedata records from the MongoDB collection.</span>
+
+<span class="sd">    This endpoint queries the ``swinedata`` collection in MongoDB,</span>
+<span class="sd">    converts the result cursor into JSON-serializable Python objects,</span>
+<span class="sd">    and returns all records to the client.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list[dict]: A list of swinedata records retrieved from the</span>
+<span class="sd">        ``swinedata`` MongoDB collection.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        HTTPException: If an unexpected error occurs while accessing</span>
+<span class="sd">        the database or serializing the results.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">db</span><span class="p">[</span><span class="s2">&quot;swinedata&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot; cursor object </span><span class="si">{</span><span class="n">cursor</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">docs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">cursor</span><span class="o">.</span><span class="n">to_list</span><span class="p">(</span><span class="n">length</span><span class="o">=</span><span class="mi">5000</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Docs </span><span class="si">{</span><span class="n">docs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">clean</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">bson</span><span class="o">.</span><span class="n">json_util</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">docs</span><span class="p">))</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cleaned docs </span><span class="si">{</span><span class="n">clean</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">clean</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error getting swinedata: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/src.html">src package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

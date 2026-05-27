@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src.pig_sorting_streamlit.app module &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="src.pig_sorting_streamlit package" href="src.pig_sorting_streamlit.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.pig_sorting_streamlit.app">
+<span id="src-pig-sorting-streamlit-app-module"></span><h1>src.pig_sorting_streamlit.app module<a class="headerlink" href="#module-src.pig_sorting_streamlit.app" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">BytesIO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">initial_bytes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">b''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_BufferedIOBase</span></code></p>
+<p>Buffered I/O implementation using an in-memory bytes buffer.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.close" title="Link to this definition">¶</a></dt>
+<dd><p>Disable all I/O operations.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.closed">
+<span class="sig-name descname"><span class="pre">closed</span></span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.closed" title="Link to this definition">¶</a></dt>
+<dd><p>True if the file is closed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.flush">
+<span class="sig-name descname"><span class="pre">flush</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.flush" title="Link to this definition">¶</a></dt>
+<dd><p>Does nothing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.getbuffer">
+<span class="sig-name descname"><span class="pre">getbuffer</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.getbuffer" title="Link to this definition">¶</a></dt>
+<dd><p>Get a read-write view over the contents of the BytesIO object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.getvalue">
+<span class="sig-name descname"><span class="pre">getvalue</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.getvalue" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve the entire contents of the BytesIO object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.isatty">
+<span class="sig-name descname"><span class="pre">isatty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.isatty" title="Link to this definition">¶</a></dt>
+<dd><p>Always returns False.</p>
+<p>BytesIO objects are not connected to a TTY-like device.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read at most size bytes, returned as a bytes object.</p>
+<p>If the size argument is negative, read until EOF is reached.
+Return an empty bytes object at EOF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.read1">
+<span class="sig-name descname"><span class="pre">read1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.read1" title="Link to this definition">¶</a></dt>
+<dd><p>Read at most size bytes, returned as a bytes object.</p>
+<p>If the size argument is negative or omitted, read until EOF is reached.
+Return an empty bytes object at EOF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.readable">
+<span class="sig-name descname"><span class="pre">readable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.readable" title="Link to this definition">¶</a></dt>
+<dd><p>Returns True if the IO object can be read.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.readinto">
+<span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.readinto" title="Link to this definition">¶</a></dt>
+<dd><p>Read bytes into buffer.</p>
+<p>Returns number of bytes read (0 for EOF), or None if the object
+is set not to block and has no data to read.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.readline">
+<span class="sig-name descname"><span class="pre">readline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.readline" title="Link to this definition">¶</a></dt>
+<dd><p>Next line from the file, as a bytes object.</p>
+<p>Retain newline.  A non-negative size argument limits the maximum
+number of bytes to return (an incomplete line may be returned then).
+Return an empty bytes object at EOF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.readlines">
+<span class="sig-name descname"><span class="pre">readlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.readlines" title="Link to this definition">¶</a></dt>
+<dd><p>List of bytes objects, each a line from the file.</p>
+<p>Call readline() repeatedly and return a list of the lines so read.
+The optional size argument, if given, is an approximate bound on the
+total number of bytes in the lines returned.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.seek" title="Link to this definition">¶</a></dt>
+<dd><p>Change stream position.</p>
+<dl class="simple">
+<dt>Seek to byte offset pos relative to position indicated by whence:</dt><dd><p>0  Start of stream (the default).  pos should be &gt;= 0;
+1  Current position - pos may be negative;
+2  End of stream - pos usually negative.</p>
+</dd>
+</dl>
+<p>Returns the new absolute position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.seekable">
+<span class="sig-name descname"><span class="pre">seekable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.seekable" title="Link to this definition">¶</a></dt>
+<dd><p>Returns True if the IO object can be seeked.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.tell" title="Link to this definition">¶</a></dt>
+<dd><p>Current file position, an integer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.truncate">
+<span class="sig-name descname"><span class="pre">truncate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.truncate" title="Link to this definition">¶</a></dt>
+<dd><p>Truncate the file to at most size bytes.</p>
+<p>Size defaults to the current file position, as returned by tell().
+The current file position is unchanged.  Returns the new size.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.writable">
+<span class="sig-name descname"><span class="pre">writable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.writable" title="Link to this definition">¶</a></dt>
+<dd><p>Returns True if the IO object can be written.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write bytes to file.</p>
+<p>Return the number of bytes written.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.BytesIO.writelines">
+<span class="sig-name descname"><span class="pre">writelines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_streamlit.app.BytesIO.writelines" title="Link to this definition">¶</a></dt>
+<dd><p>Write lines to the file.</p>
+<p>Note that newlines are not added.  lines can be any iterable object
+producing bytes-like objects. This is equivalent to calling write() for
+each element.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.camera_select">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">camera_select</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#camera_select"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.camera_select" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.chain_prediction">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">chain_prediction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">uploaded_files</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models_to_chain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_annotated</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#chain_prediction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.chain_prediction" title="Link to this definition">¶</a></dt>
+<dd><p>Sends request to perform prediction utilizing model(s) and sets the results in session state “prediction_results”</p>
+<dl class="field-list simple">
+<dt class="field-odd">Noindex<span class="colon">:</span></dt>
+<dd class="field-odd"><p></p></dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>uploaded_files</strong> (<em>list</em><em>[</em><em>UploadedFile</em><em>]</em>) – A list of all the images</p></li>
+<li><p><strong>models_to_chain</strong> (<em>list</em><em>[</em><em>Dict</em><em>]</em>) – A list of all the models to perform inference with order matters. starts with first element</p></li>
+<li><p><strong>return_annotated</strong> (<em>bool</em>) – A flag to tell us if we should return a image, this image will have annotations</p></li>
+<li><p><strong>confidence</strong> (<em>float</em>) – This is the threshold for what classes we consider valid and will return 0.5 = 50%</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.display_camera_stream">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">display_camera_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_ids</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#display_camera_stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.display_camera_stream" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.display_prediction">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">display_prediction</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#display_prediction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.display_prediction" title="Link to this definition">¶</a></dt>
+<dd><p>Looks in the session state for prediction_results and displays the results with the option to save.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.get_user_frame_interval">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">get_user_frame_interval</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#get_user_frame_interval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.get_user_frame_interval" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.load_models">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">load_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#load_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.load_models" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.parse_channels">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">parse_channels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_ids</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#parse_channels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.parse_channels" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.set_camera_interval">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">set_camera_interval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_between_pic</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#set_camera_interval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.set_camera_interval" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.set_inference_variables">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">set_inference_variables</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#set_inference_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.set_inference_variables" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_streamlit.app.trigger_picture">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_streamlit.app.</span></span><span class="sig-name descname"><span class="pre">trigger_picture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera_ids</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">models_to_chain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_annotated</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_streamlit/app.html#trigger_picture"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_streamlit.app.trigger_picture" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="src.data_intake.html">src.data_intake package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.data_stream.html">src.data_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.deep_stream.html">src.deep_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_deploy.html">src.model_deploy package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_training.html">src.model_training package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_api.html">src.pig_sorting_api package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="src.pig_sorting_streamlit.html#submodules">Submodules</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="src.html">src package</a><ul>
+  <li><a href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a><ul>
+      <li>Previous: <a href="src.pig_sorting_streamlit.html" title="previous chapter">src.pig_sorting_streamlit package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/modules/src.pig_sorting_streamlit.app.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

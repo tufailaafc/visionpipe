@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>src.pig_sorting_streamlit.app &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.pig_sorting_streamlit.app</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">streamlit</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">st</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">base64</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">PIL</span><span class="w"> </span><span class="kn">import</span> <span class="n">Image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">io</span><span class="w"> </span><span class="kn">import</span> <span class="n">BytesIO</span>
+
+
+
+<span class="n">MIDDLEWARE_URL</span> <span class="o">=</span> <span class="s2">&quot;http://pig-sorting-api:8001&quot;</span>
+<span class="n">MODEL_DEPLOY_URL</span> <span class="o">=</span> <span class="s2">&quot;http://model-deploy:8601&quot;</span>
+
+
+
+<span class="n">st</span><span class="o">.</span><span class="n">set_page_config</span><span class="p">(</span><span class="n">page_title</span><span class="o">=</span><span class="s2">&quot;AI-assisted Pigs Evaluation&quot;</span><span class="p">,</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;centered&quot;</span><span class="p">)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;AI-assisted Pigs Evaluation&quot;</span><span class="p">)</span>
+<span class="n">st</span><span class="o">.</span><span class="n">subheader</span><span class="p">(</span><span class="s2">&quot;Dr. Muhammad Tufail, Nathaniel Yeo&quot;</span><span class="p">)</span>
+
+
+
+
+
+<span class="c1">#This will turn the selected camera_id into a form that we can use to tell the nvr which cameras we want to take pictures</span>
+<div class="viewcode-block" id="parse_channels">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.parse_channels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">parse_channels</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">):</span>
+    <span class="n">channels</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">camera_id</span> <span class="ow">in</span> <span class="n">camera_ids</span><span class="p">:</span>
+        <span class="n">channel_num</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="nb">str</span><span class="o">.</span><span class="n">isdigit</span><span class="p">,</span> <span class="n">camera_id</span><span class="p">))</span>
+        <span class="n">channels</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">channel_num</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">channels</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># --- Run chain prediction ---</span>
+<div class="viewcode-block" id="chain_prediction">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.chain_prediction">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">chain_prediction</span><span class="p">(</span><span class="n">uploaded_files</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sends request to perform prediction utilizing model(s) and sets the results in session state &quot;prediction_results&quot;</span>
+
+<span class="sd">    :noindex:</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        uploaded_files   (list[UploadedFile]): A list of all the images</span>
+<span class="sd">        models_to_chain  (list[Dict]):         A list of all the models to perform inference with order matters. starts with first element</span>
+<span class="sd">        return_annotated (bool):               A flag to tell us if we should return a image, this image will have annotations</span>
+<span class="sd">        confidence       (float):              This is the threshold for what classes we consider valid and will return 0.5 = 50%  </span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None  </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Run Chain Prediction&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">uploaded_files</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Please upload at least one image.&quot;</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="n">models_to_chain</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Please select at least one model for chaining.&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">instances</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">file</span> <span class="ow">in</span> <span class="n">uploaded_files</span><span class="p">:</span>
+                <span class="n">img_bytes</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                <span class="n">img_b64</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64encode</span><span class="p">(</span><span class="n">img_bytes</span><span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+                <span class="n">instances</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="s2">&quot;image&quot;</span><span class="p">:</span> <span class="n">img_b64</span><span class="p">})</span>
+
+            <span class="n">payload</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;model_names&quot;</span><span class="p">:</span> <span class="n">models_to_chain</span><span class="p">,</span>
+                <span class="s2">&quot;instances&quot;</span><span class="p">:</span> <span class="n">instances</span><span class="p">,</span>
+                <span class="s2">&quot;parameters&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;return_annotated_image&quot;</span><span class="p">:</span> <span class="n">return_annotated</span><span class="p">,</span>
+                            <span class="s2">&quot;confidence&quot;</span><span class="p">:</span> <span class="n">confidence</span><span class="p">,}</span>
+            <span class="p">}</span>
+
+            <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">spinner</span><span class="p">(</span><span class="s2">&quot;Running chain prediction...&quot;</span><span class="p">):</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">resp</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MIDDLEWARE_URL</span><span class="si">}</span><span class="s2">/chain_predict&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">payload</span><span class="p">)</span>
+                    <span class="n">resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                    <span class="n">results</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;predictions&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                    
+                    <span class="c1"># Store results in session state</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">prediction_results</span> <span class="o">=</span> <span class="n">results</span>
+                    
+                <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">HTTPError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Backend returned error: </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="si">}</span><span class="s2"> - </span><span class="si">{</span><span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Prediction failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+
+<span class="c1">################################################Select Cameras and time frame############################################</span>
+<span class="c1"># Need to be changed to not local host but the server ip when not running locally</span>
+<span class="n">mjpeg_url</span> <span class="o">=</span> <span class="s2">&quot;http://localhost:8801/stream.mjpeg&quot;</span>
+
+
+<span class="n">st</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&quot;Live DeepStream MJPEG Video&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="camera_select">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.camera_select">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">camera_select</span><span class="p">():</span>
+    <span class="c1"># User picks from predefined camera IDs</span>
+    <span class="c1"># The camera_id must have the corresponding nvr port number it is connected to in the id, </span>
+    <span class="c1"># if is port 3 then it must only have the number 3 in it.</span>
+    <span class="c1"># This allows us to parse it easier.</span>
+    <span class="c1"># camera_ids = st.multiselect(&quot;Choose cameras&quot;, [&quot;cam1HighDef&quot;, &quot;cam1LowDef&quot;,&quot;cam3HighDef&quot;, &quot;cam3LowDef&quot;])</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MIDDLEWARE_URL</span><span class="si">}</span><span class="s2">/api/v1/collector/channels&quot;</span><span class="p">,</span> 
+                                <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                                    <span class="s2">&quot;password&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                                    <span class="s2">&quot;nvr_ip&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+        <span class="n">camera_ids</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># st.json(response.json())</span>
+        <span class="n">res_val_list</span> <span class="o">=</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()[</span><span class="s2">&quot;channel_ids&quot;</span><span class="p">]</span>
+        
+        <span class="c1"># for res in response.json().values():</span>
+        <span class="c1"># st.dataframe(res_val_list)</span>
+        <span class="k">for</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">res_val_list</span><span class="p">:</span>
+            <span class="n">camera_ids</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;cam</span><span class="si">{</span><span class="n">res</span><span class="si">}</span><span class="s2">HighDef&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span> 
+            <span class="n">camera_ids</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;cam</span><span class="si">{</span><span class="n">res</span><span class="si">}</span><span class="s2">LowDef&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">res</span> 
+    
+        <span class="n">camera_ids</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">multiselect</span><span class="p">(</span><span class="s2">&quot;Choose cameras&quot;</span><span class="p">,</span> <span class="n">camera_ids</span><span class="p">)</span>
+
+
+        <span class="k">return</span> <span class="n">camera_ids</span>
+    <span class="c1"># if camera_id and st.button(&quot;Connect to selected cameras&quot;):</span>
+    <span class="c1">#     for cam in camera_id:</span>
+    <span class="c1">#         if cam:</span>
+    <span class="c1">#             mjpeg_url = f&quot;http://localhost:8801/stream/{cam}.mjpeg&quot;</span>
+    <span class="c1">#             st.image(mjpeg_url)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">e</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="display_camera_stream">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.display_camera_stream">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_camera_stream</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">camera_ids</span> <span class="ow">and</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Connect to selected cameras&quot;</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">cam</span> <span class="ow">in</span> <span class="n">camera_ids</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">cam</span><span class="p">:</span>
+                <span class="n">mjpeg_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;http://localhost:8801/stream/</span><span class="si">{</span><span class="n">cam</span><span class="si">}</span><span class="s2">.mjpeg&quot;</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">mjpeg_url</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Select how often you want it to take pictures</span>
+<div class="viewcode-block" id="get_user_frame_interval">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.get_user_frame_interval">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_user_frame_interval</span><span class="p">():</span>
+    <span class="n">frame_between_pic</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">number_input</span><span class="p">(</span><span class="s2">&quot;How many frames between taking screenshots (The Lorex cameras operate at 15fps)&quot;</span><span class="p">,</span>
+                                        <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                        <span class="n">value</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">frame_between_pic</span></div>
+
+
+
+<div class="viewcode-block" id="set_camera_interval">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.set_camera_interval">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_camera_interval</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">,</span> <span class="n">frame_between_pic</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Set Frame Interval for Selected Cameras&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">camera_ids</span><span class="p">:</span>
+            <span class="n">channels</span> <span class="o">=</span> <span class="n">parse_channels</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">)</span>
+            <span class="n">errors</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MIDDLEWARE_URL</span><span class="si">}</span><span class="s2">/api/v1/collector/frame_interval&quot;</span><span class="p">,</span>
+                        <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="n">ch</span><span class="p">,</span> <span class="s2">&quot;interval&quot;</span><span class="p">:</span> <span class="n">frame_between_pic</span><span class="p">}</span>
+                    <span class="p">)</span>
+                    <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">errors</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">errors</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Frame interval set to </span><span class="si">{</span><span class="n">frame_between_pic</span><span class="si">}</span><span class="s2"> for channels: </span><span class="si">{</span><span class="n">channels</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Errors occurred: </span><span class="si">{</span><span class="n">errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="trigger_picture">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.trigger_picture">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">trigger_picture</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span><span class="p">):</span>
+    <span class="c1">#trigger picture once</span>
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Take one picture now&quot;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">camera_ids</span><span class="p">:</span>
+            <span class="n">channels</span> <span class="o">=</span> <span class="n">parse_channels</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;channels: </span><span class="si">{</span><span class="n">channels</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="c1">#test declaration TOBE GOTTEN RID OF</span>
+            <span class="n">comment</span> <span class="o">=</span> <span class="s2">&quot;Testing for global comments&quot;</span>
+            <span class="n">comments</span> <span class="o">=</span> <span class="kc">None</span>
+            
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MIDDLEWARE_URL</span><span class="si">}</span><span class="s2">/api/v1/collector/capture&quot;</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;channels&quot;</span><span class="p">:</span> <span class="n">channels</span><span class="p">,</span>
+                          <span class="s2">&quot;comment&quot;</span><span class="p">:</span> <span class="n">comment</span><span class="p">,</span>
+                          <span class="s2">&quot;comments&quot;</span><span class="p">:</span> <span class="n">comments</span><span class="p">}</span>
+                <span class="p">)</span>
+                <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Took picture(s) for channels: </span><span class="si">{</span><span class="n">channels</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">chain_prediction</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">requests</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestException</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to take picture: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="set_inference_variables">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.set_inference_variables">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">set_inference_variables</span><span class="p">():</span>
+    <span class="n">uploaded_files</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">file_uploader</span><span class="p">(</span><span class="s2">&quot;Upload pig images&quot;</span><span class="p">,</span> <span class="n">accept_multiple_files</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;jpg&quot;</span><span class="p">,</span> <span class="s2">&quot;jpeg&quot;</span><span class="p">,</span> <span class="s2">&quot;png&quot;</span><span class="p">])</span>
+
+    <span class="c1"># --- Choose models to chain ---</span>
+    <span class="n">models_to_chain</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">multiselect</span><span class="p">(</span><span class="s2">&quot;Select models to chain (order matters)&quot;</span><span class="p">,</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">models</span><span class="p">)</span>
+
+    <span class="c1"># Confidence threshold slider</span>
+    <span class="n">confidence</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">slider</span><span class="p">(</span><span class="s2">&quot;Confidence Threshold&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+
+    <span class="c1"># --- Annotated image toggle ---</span>
+    <span class="n">return_annotated</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">checkbox</span><span class="p">(</span><span class="s2">&quot;Return annotated image&quot;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">uploaded_files</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span></div>
+
+
+<div class="viewcode-block" id="load_models">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.load_models">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_models</span><span class="p">():</span>
+    <span class="c1"># Fetch available discovered models</span>
+    <span class="nd">@st</span><span class="o">.</span><span class="n">cache_data</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_discovered_models</span><span class="p">():</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">response</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MODEL_DEPLOY_URL</span><span class="si">}</span><span class="s2">/models/discover&quot;</span><span class="p">)</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">,</span> <span class="p">{})</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to fetch models: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="n">models</span> <span class="o">=</span> <span class="n">get_discovered_models</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">models</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;No models discovered in the backend.&quot;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Refresh model list&quot;</span><span class="p">):</span>
+        <span class="n">models</span> <span class="o">=</span> <span class="n">get_discovered_models</span><span class="p">()</span>
+
+    <span class="c1"># Model selection</span>
+    <span class="n">model_keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">models</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">selected_model_key</span> <span class="o">=</span> <span class="n">st</span><span class="o">.</span><span class="n">selectbox</span><span class="p">(</span><span class="s2">&quot;Select Model&quot;</span><span class="p">,</span> <span class="n">model_keys</span><span class="p">)</span>
+
+    <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">models</span> <span class="o">=</span> <span class="n">model_keys</span>
+
+
+    <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Load Selected Model&quot;</span><span class="p">):</span>
+        <span class="k">with</span> <span class="n">st</span><span class="o">.</span><span class="n">spinner</span><span class="p">(</span><span class="s2">&quot;Loading model...&quot;</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MODEL_DEPLOY_URL</span><span class="si">}</span><span class="s2">/model/load/discovered&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;model_key&quot;</span><span class="p">:</span> <span class="n">selected_model_key</span><span class="p">})</span>
+                <span class="n">res</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model &#39;</span><span class="si">{</span><span class="n">selected_model_key</span><span class="si">}</span><span class="s2">&#39; loaded successfully.&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load model: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+
+<span class="c1"># Display results if they exist (either from current run or previous session state)</span>
+<div class="viewcode-block" id="display_prediction">
+<a class="viewcode-back" href="../../../modules/src.pig_sorting_streamlit.app.html#src.pig_sorting_streamlit.app.display_prediction">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">display_prediction</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Looks in the session state for prediction_results and displays the results with the option to save.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="s2">&quot;prediction_results&quot;</span> <span class="ow">in</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span> <span class="ow">and</span> <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">prediction_results</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">subheader</span><span class="p">(</span><span class="s2">&quot;Prediction Results&quot;</span><span class="p">)</span>
+        <span class="n">st</span><span class="o">.</span><span class="n">json</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">prediction_results</span><span class="p">)</span>
+        <span class="c1"># Add a clear results button</span>
+        <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="s2">&quot;Clear Results&quot;</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">prediction_results</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">rerun</span><span class="p">()</span>
+        
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">res</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">st</span><span class="o">.</span><span class="n">session_state</span><span class="o">.</span><span class="n">prediction_results</span><span class="p">):</span>
+            <span class="n">st</span><span class="o">.</span><span class="n">subheader</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">annotated_img_b64</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;annotated_image&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">annotated_img_b64</span><span class="p">:</span>
+
+                <span class="c1"># --- Display chain results ---</span>
+                <span class="n">chain</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chain&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                <span class="k">for</span> <span class="n">step_idx</span><span class="p">,</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chain</span><span class="p">):</span>
+                    <span class="n">st</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;**Step </span><span class="si">{</span><span class="n">step_idx</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">: Model `</span><span class="si">{</span><span class="n">step</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">`**&quot;</span><span class="p">)</span>
+                    
+                    <span class="n">detections</span> <span class="o">=</span> <span class="n">step</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;detections&quot;</span><span class="p">,</span> <span class="p">[])</span>
+                    <span class="k">if</span> <span class="n">detections</span><span class="p">:</span>
+                        <span class="k">for</span> <span class="n">det</span> <span class="ow">in</span> <span class="n">detections</span><span class="p">:</span>
+                            <span class="c1"># Display Yolo Classification formatted predictions</span>
+                            <span class="k">if</span> <span class="s1">&#39;yolo&#39;</span> <span class="ow">in</span> <span class="n">step</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                                <span class="n">label</span> <span class="o">=</span> <span class="n">det</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;class&quot;</span><span class="p">)</span>
+                                <span class="n">conf</span> <span class="o">=</span> <span class="n">det</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;confidence&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                                <span class="c1"># if label != None:</span>
+                                <span class="n">st</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- `</span><span class="si">{</span><span class="n">label</span><span class="si">}</span><span class="s2">` (confidence: </span><span class="si">{</span><span class="n">conf</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+                            <span class="c1"># Display DeepLabCut formatted predicitions</span>
+                            <span class="k">if</span> <span class="s1">&#39;deeplabcut&#39;</span> <span class="ow">in</span> <span class="n">step</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                                <span class="n">bodypart</span> <span class="o">=</span> <span class="n">det</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;bodypart&quot;</span><span class="p">)</span> 
+                                <span class="n">x_coord</span> <span class="o">=</span> <span class="n">det</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;x&quot;</span><span class="p">)</span>
+                                <span class="n">y_coord</span> <span class="o">=</span> <span class="n">det</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;y&quot;</span><span class="p">)</span>
+                                <span class="n">likelihood</span> <span class="o">=</span> <span class="n">det</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;likelihood&quot;</span><span class="p">)</span>
+    
+                                <span class="k">if</span> <span class="n">bodypart</span> <span class="o">!=</span> <span class="kc">None</span><span class="p">:</span>
+                                    <span class="n">st</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- `</span><span class="si">{</span><span class="n">bodypart</span><span class="si">}</span><span class="s2">` (confidence: </span><span class="si">{</span><span class="n">likelihood</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) `Coords(x,y)` (</span><span class="si">{</span><span class="n">x_coord</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">y_coord</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="s1">&#39;deeplabcut&#39;</span> <span class="ow">in</span> <span class="n">step</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                            <span class="n">length</span> <span class="o">=</span> <span class="n">detections</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pig_length&quot;</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                            <span class="n">width</span> <span class="o">=</span> <span class="n">detections</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;pig_width&quot;</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                            <span class="n">weight</span> <span class="o">=</span> <span class="n">detections</span><span class="p">[</span><span class="mi">9</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;weight&quot;</span><span class="p">,</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>   
+                            <span class="n">st</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- `Weight grams` (</span><span class="si">{</span><span class="n">weight</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) `Length centimeteres` (</span><span class="si">{</span><span class="n">length</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">) `Width centimeters` (</span><span class="si">{</span><span class="n">width</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;_No detections_&quot;</span><span class="p">)</span>
+
+
+                <span class="n">img_bytes</span> <span class="o">=</span> <span class="n">base64</span><span class="o">.</span><span class="n">b64decode</span><span class="p">(</span><span class="n">annotated_img_b64</span><span class="p">)</span>
+                <span class="n">st</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">img_bytes</span><span class="p">,</span> <span class="n">caption</span><span class="o">=</span><span class="s2">&quot;Annotated Result&quot;</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="s1">&#39;stretch&#39;</span><span class="p">)</span>
+
+                
+
+                <span class="c1"># Save button with unique key</span>
+                <span class="n">button_key</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;save_</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="nb">hash</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">res</span><span class="p">))</span><span class="si">}</span><span class="s2">&quot;</span>  <span class="c1"># More unique key</span>
+                <span class="k">if</span> <span class="n">st</span><span class="o">.</span><span class="n">button</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;💾 Save Image </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">button_key</span><span class="p">):</span>
+                    <span class="n">save_payload</span> <span class="o">=</span> <span class="p">{</span>
+                        <span class="s2">&quot;annotated_image&quot;</span><span class="p">:</span> <span class="n">annotated_img_b64</span><span class="p">,</span>
+                        <span class="s2">&quot;detections&quot;</span><span class="p">:</span> <span class="nb">sum</span><span class="p">([</span><span class="n">step</span><span class="p">[</span><span class="s2">&quot;detections&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chain&quot;</span><span class="p">,</span> <span class="p">[])],</span> <span class="p">[]),</span>
+                        <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;models&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">step</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="n">res</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;chain&quot;</span><span class="p">,</span> <span class="p">[])]},</span>
+                    <span class="p">}</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">save_resp</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">MIDDLEWARE_URL</span><span class="si">}</span><span class="s2">/save_prediction&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="n">save_payload</span><span class="p">)</span>
+                        <span class="n">save_resp</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">success</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Image </span><span class="si">{</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2"> saved to DB at </span><span class="si">{</span><span class="n">save_resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;path&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">st</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Save failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="n">camera_ids</span> <span class="o">=</span> <span class="n">camera_select</span><span class="p">()</span>
+<span class="n">display_camera_stream</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">)</span>
+<span class="n">frame_interval</span> <span class="o">=</span> <span class="n">get_user_frame_interval</span><span class="p">()</span>
+<span class="n">set_camera_interval</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">,</span> <span class="n">frame_interval</span><span class="p">)</span>
+
+
+
+<span class="n">load_models</span><span class="p">()</span>
+
+<span class="n">uploaded_files</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span> <span class="o">=</span> <span class="n">set_inference_variables</span><span class="p">()</span>
+
+<span class="n">trigger_picture</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span><span class="p">)</span>
+
+
+
+
+<span class="n">chain_prediction</span><span class="p">(</span><span class="n">uploaded_files</span><span class="p">,</span> <span class="n">models_to_chain</span><span class="p">,</span> <span class="n">return_annotated</span><span class="p">,</span> <span class="n">confidence</span><span class="p">)</span>
+
+
+<span class="n">display_prediction</span><span class="p">()</span>
+
+
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/src.html">src package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

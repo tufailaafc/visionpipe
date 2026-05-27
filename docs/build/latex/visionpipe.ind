@@ -1,0 +1,564 @@
+\begin{sphinxtheindex}
+\let\bigletter\sphinxstyleindexlettergroup
+\let\spxpagem \sphinxstyleindexpagemain
+\let\spxentry \sphinxstyleindexentry
+\let\spxextra \sphinxstyleindexextra
+
+  \bigletter A
+  \item \spxentry{add\_rtsp\_source()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{11}
+  \item \spxentry{add\_source()}\spxextra{in module src.deep\_stream.api}, \hyperpage{11}
+  \item \spxentry{add\_sources()}\spxextra{in module src.deep\_stream.deepstream}, \hyperpage{11}
+  \item \spxentry{annotated\_image}\spxextra{src.pig\_sorting\_api.main.ChainResult attribute}, 
+		\hyperpage{19}
+  \item \spxentry{annotated\_image}\spxextra{src.pig\_sorting\_api.main.SavePredictionRequest attribute}, 
+		\hyperpage{21}
+  \item \spxentry{Any}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{17}
+  \item \spxentry{arbitrary\_types\_allowed}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata.Config attribute}, 
+		\hyperpage{5}
+  \item \spxentry{astimezone()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{1}
+  \item \spxentry{astimezone()}\spxextra{src.pig\_sorting\_api.main.datetime method}, 
+		\hyperpage{24}
+  \item \spxentry{author}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata attribute}, 
+		\hyperpage{4, 5}
+
+  \indexspace
+  \bigletter B
+  \item \spxentry{bus\_call()}\spxextra{in module src.deep\_stream.deepstream}, \hyperpage{11}
+  \item \spxentry{BytesIO}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{17}
+  \item \spxentry{BytesIO}\spxextra{class in src.pig\_sorting\_streamlit.app}, \hyperpage{32}
+
+  \indexspace
+  \bigletter C
+  \item \spxentry{camera\_select()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{33}
+  \item \spxentry{CameraRequest}\spxextra{class in src.deep\_stream.api}, \hyperpage{11}
+  \item \spxentry{capture()}\spxextra{in module src.pig\_sorting\_api.main}, \hyperpage{23}
+  \item \spxentry{capture\_camera()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{5}
+  \item \spxentry{CapturePayload}\spxextra{class in src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{3}
+  \item \spxentry{CaptureRequest}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{18}
+  \item \spxentry{cb\_newpad()}\spxextra{in module src.deep\_stream.deepstream}, \hyperpage{11}
+  \item \spxentry{chain}\spxextra{src.pig\_sorting\_api.main.ChainResult attribute}, \hyperpage{19}
+  \item \spxentry{chain\_prediction()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{33}
+  \item \spxentry{ChainPredictionRequest}\spxextra{class in src.pig\_sorting\_api.main}, 
+		\hyperpage{19}
+  \item \spxentry{ChainPredictionResponse}\spxextra{class in src.pig\_sorting\_api.main}, 
+		\hyperpage{19}
+  \item \spxentry{ChainResult}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{19}
+  \item \spxentry{change\_frame\_interval()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{6}
+  \item \spxentry{channel}\spxextra{src.data\_intake.data\_intake.NVRConnection.FrameIntervalRequest attribute}, 
+		\hyperpage{4}
+  \item \spxentry{channel}\spxextra{src.pig\_sorting\_api.main.FrameIntervalRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{channels}\spxextra{src.data\_intake.data\_intake.NVRConnection.CapturePayload attribute}, 
+		\hyperpage{3}
+  \item \spxentry{channels}\spxextra{src.pig\_sorting\_api.main.CaptureRequest attribute}, 
+		\hyperpage{18, 19}
+  \item \spxentry{channels()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{6}
+  \item \spxentry{channels()}\spxextra{in module src.pig\_sorting\_api.main}, \hyperpage{23}
+  \item \spxentry{ChannelsRequest}\spxextra{class in src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{3}
+  \item \spxentry{ChannelsRequest}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{19}
+  \item \spxentry{close()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{close()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{32}
+  \item \spxentry{closed}\spxextra{src.pig\_sorting\_api.main.BytesIO attribute}, \hyperpage{17}
+  \item \spxentry{closed}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO attribute}, 
+		\hyperpage{32}
+  \item \spxentry{combine()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{1}
+  \item \spxentry{combine()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, 
+		\hyperpage{24}
+  \item \spxentry{comment}\spxextra{src.data\_intake.data\_intake.NVRConnection.CapturePayload attribute}, 
+		\hyperpage{3}
+  \item \spxentry{comment}\spxextra{src.pig\_sorting\_api.main.CaptureRequest attribute}, 
+		\hyperpage{18, 19}
+  \item \spxentry{comment}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{21, 22}
+  \item \spxentry{comments}\spxextra{src.data\_intake.data\_intake.NVRConnection.CapturePayload attribute}, 
+		\hyperpage{3}
+  \item \spxentry{comments}\spxextra{src.pig\_sorting\_api.main.CaptureRequest attribute}, 
+		\hyperpage{19}
+  \item \spxentry{confidence}\spxextra{src.pig\_sorting\_api.main.InferenceRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{convert\_objectid\_to\_str()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{23}
+  \item \spxentry{create\_uridecode\_bin()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{11}
+  \item \spxentry{ctime()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{1}
+  \item \spxentry{ctime()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{24}
+
+  \indexspace
+  \bigletter D
+  \item \spxentry{date()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{1}
+  \item \spxentry{date()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{24}
+  \item \spxentry{date\_time}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata attribute}, 
+		\hyperpage{4, 5}
+  \item \spxentry{datetime}\spxextra{class in src.data\_intake.data\_intake.Client}, \hyperpage{1}
+  \item \spxentry{datetime}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{24}
+  \item \spxentry{days}\spxextra{src.pig\_sorting\_api.main.timedelta attribute}, \hyperpage{31}
+  \item \spxentry{decodebin\_child\_added()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{11}
+  \item \spxentry{delete\_sources()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{11}
+  \item \spxentry{depth\_image\_names}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22}
+  \item \spxentry{depth\_images}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22}
+  \item \spxentry{description}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata attribute}, 
+		\hyperpage{4, 5}
+  \item \spxentry{detection\_count}\spxextra{src.pig\_sorting\_api.main.ModelResult attribute}, 
+		\hyperpage{21}
+  \item \spxentry{detections}\spxextra{src.pig\_sorting\_api.main.ModelResult attribute}, 
+		\hyperpage{21}
+  \item \spxentry{detections}\spxextra{src.pig\_sorting\_api.main.SavePredictionRequest attribute}, 
+		\hyperpage{21}
+  \item \spxentry{display\_camera\_stream()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{display\_prediction()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{dst()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{1}
+  \item \spxentry{dst()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{24}
+  \item \spxentry{dst()}\spxextra{src.pig\_sorting\_api.main.timezone method}, \hyperpage{31}
+
+  \indexspace
+  \bigletter E
+  \item \spxentry{empty()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{12}
+
+  \indexspace
+  \bigletter F
+  \item \spxentry{find\_yaml\_file()}\spxextra{in module src.model\_training.trainer}, 
+		\hyperpage{13}
+  \item \spxentry{flush()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{flush()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{32}
+  \item \spxentry{fold}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{1}
+  \item \spxentry{fold}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{24}
+  \item \spxentry{forward\_chain\_predict()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{25}
+  \item \spxentry{FrameIntervalRequest}\spxextra{class in src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{3}
+  \item \spxentry{FrameIntervalRequest}\spxextra{class in src.pig\_sorting\_api.main}, 
+		\hyperpage{20}
+  \item \spxentry{fromisoformat()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{1}
+  \item \spxentry{fromisoformat()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, 
+		\hyperpage{24}
+  \item \spxentry{fromtimestamp()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{1}
+  \item \spxentry{fromtimestamp()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, 
+		\hyperpage{24}
+  \item \spxentry{fromutc()}\spxextra{src.pig\_sorting\_api.main.timezone method}, \hyperpage{31}
+  \item \spxentry{full()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{12}
+
+  \indexspace
+  \bigletter G
+  \item \spxentry{gen\_frames()}\spxextra{in module src.data\_stream.StreamConversionServer}, 
+		\hyperpage{10}
+  \item \spxentry{get()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+  \item \spxentry{get\_data\_sets()}\spxextra{in module src.model\_training.trainer}, 
+		\hyperpage{14}
+  \item \spxentry{get\_images\_by\_date()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{26}
+  \item \spxentry{get\_last\_checkpoint()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{26}
+  \item \spxentry{get\_mongo\_data()}\spxextra{in module src.model\_training.trainer}, 
+		\hyperpage{14}
+  \item \spxentry{get\_mongo\_data()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{26}
+  \item \spxentry{get\_nowait()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+  \item \spxentry{get\_swinedata()}\spxextra{in module src.pig\_sorting\_api.main}, \hyperpage{27}
+  \item \spxentry{get\_user\_frame\_interval()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{getbuffer()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{getbuffer()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{32}
+  \item \spxentry{getCameraChannels()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{7}
+  \item \spxentry{getMetaDataDir()}\spxextra{in module src.data\_intake.data\_intake.utils}, 
+		\hyperpage{9}
+  \item \spxentry{getvalue()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{getvalue()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{32}
+
+  \indexspace
+  \bigletter H
+  \item \spxentry{health()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{7}
+  \item \spxentry{hour}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{1}
+  \item \spxentry{hour}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{24}
+
+  \indexspace
+  \bigletter I
+  \item \spxentry{image\_base64}\spxextra{src.pig\_sorting\_api.main.InferenceRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{image\_path}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata attribute}, 
+		\hyperpage{4, 5}
+  \item \spxentry{image\_to\_base64()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{27}
+  \item \spxentry{ImageMetadata}\spxextra{class in src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{4}
+  \item \spxentry{ImageMetadata.Config}\spxextra{class in src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{5}
+  \item \spxentry{ImageName}\spxextra{src.pig\_sorting\_api.main.SavePredictionRequest attribute}, 
+		\hyperpage{21}
+  \item \spxentry{InferenceRequest}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{20}
+  \item \spxentry{instances}\spxextra{src.pig\_sorting\_api.main.ChainPredictionRequest attribute}, 
+		\hyperpage{19}
+  \item \spxentry{interval}\spxextra{src.data\_intake.data\_intake.NVRConnection.FrameIntervalRequest attribute}, 
+		\hyperpage{4}
+  \item \spxentry{interval}\spxextra{src.pig\_sorting\_api.main.FrameIntervalRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{is\_reachable()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{7}
+  \item \spxentry{isatty()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{isatty()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{32}
+  \item \spxentry{isoformat()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{1}
+  \item \spxentry{isoformat()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{24}
+
+  \indexspace
+  \bigletter J
+  \item \spxentry{join()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+
+  \indexspace
+  \bigletter L
+  \item \spxentry{load\_default\_models()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{27}
+  \item \spxentry{load\_models()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{Lock()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{5}
+
+  \indexspace
+  \bigletter M
+  \item \spxentry{main()}\spxextra{in module src.deep\_stream.deepstream}, \hyperpage{12}
+  \item \spxentry{max}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{max}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{24}
+  \item \spxentry{max}\spxextra{src.pig\_sorting\_api.main.timedelta attribute}, \hyperpage{31}
+  \item \spxentry{max}\spxextra{src.pig\_sorting\_api.main.timezone attribute}, \hyperpage{31}
+  \item \spxentry{metadata}\spxextra{src.pig\_sorting\_api.main.SavePredictionRequest attribute}, 
+		\hyperpage{21}
+  \item \spxentry{microsecond}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{microsecond}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, 
+		\hyperpage{24}
+  \item \spxentry{microseconds}\spxextra{src.pig\_sorting\_api.main.timedelta attribute}, 
+		\hyperpage{31}
+  \item \spxentry{min}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{min}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{24}
+  \item \spxentry{min}\spxextra{src.pig\_sorting\_api.main.timedelta attribute}, \hyperpage{31}
+  \item \spxentry{min}\spxextra{src.pig\_sorting\_api.main.timezone attribute}, \hyperpage{31}
+  \item \spxentry{minute}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{minute}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{24}
+  \item \spxentry{model}\spxextra{src.pig\_sorting\_api.main.ModelResult attribute}, \hyperpage{21}
+  \item \spxentry{model\_name}\spxextra{src.pig\_sorting\_api.main.InferenceRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{model\_names}\spxextra{src.pig\_sorting\_api.main.ChainPredictionRequest attribute}, 
+		\hyperpage{19}
+  \item \spxentry{ModelResult}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{20}
+  \item \spxentry{module}
+    \subitem \spxentry{src}, \hyperpage{1}
+    \subitem \spxentry{src.data\_intake}, \hyperpage{1}
+    \subitem \spxentry{src.data\_intake.data\_intake}, \hyperpage{1}
+    \subitem \spxentry{src.data\_intake.data\_intake.Client}, \hyperpage{1}
+    \subitem \spxentry{src.data\_intake.data\_intake.NVRConnection}, \hyperpage{3}
+    \subitem \spxentry{src.data\_intake.data\_intake.utils}, \hyperpage{9}
+    \subitem \spxentry{src.data\_stream}, \hyperpage{10}
+    \subitem \spxentry{src.data\_stream.StreamConversionServer}, \hyperpage{10}
+    \subitem \spxentry{src.deep\_stream}, \hyperpage{11}
+    \subitem \spxentry{src.deep\_stream.api}, \hyperpage{11}
+    \subitem \spxentry{src.deep\_stream.deepstream}, \hyperpage{11}
+    \subitem \spxentry{src.model\_deploy}, \hyperpage{12}
+    \subitem \spxentry{src.model\_training}, \hyperpage{12}
+    \subitem \spxentry{src.model\_training.trainer}, \hyperpage{12}
+    \subitem \spxentry{src.pig\_sorting\_api}, \hyperpage{16}
+    \subitem \spxentry{src.pig\_sorting\_api.client}, \hyperpage{16}
+    \subitem \spxentry{src.pig\_sorting\_api.main}, \hyperpage{16}
+    \subitem \spxentry{src.pig\_sorting\_streamlit}, \hyperpage{32}
+    \subitem \spxentry{src.pig\_sorting\_streamlit.app}, \hyperpage{32}
+
+  \indexspace
+  \bigletter N
+  \item \spxentry{new\_pad\_probe()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{12}
+  \item \spxentry{now()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{2}
+  \item \spxentry{now()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, \hyperpage{25}
+  \item \spxentry{nvr\_ip}\spxextra{src.data\_intake.data\_intake.NVRConnection.ChannelsRequest attribute}, 
+		\hyperpage{3}
+  \item \spxentry{nvr\_ip}\spxextra{src.pig\_sorting\_api.main.ChannelsRequest attribute}, 
+		\hyperpage{20}
+
+  \indexspace
+  \bigletter O
+  \item \spxentry{onvifCameraInfo()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{8}
+  \item \spxentry{open\_stream()}\spxextra{in module src.data\_stream.StreamConversionServer}, 
+		\hyperpage{10}
+
+  \indexspace
+  \bigletter P
+  \item \spxentry{pad\_debug\_probe\_limited()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{12}
+  \item \spxentry{parameters}\spxextra{src.pig\_sorting\_api.main.ChainPredictionRequest attribute}, 
+		\hyperpage{19}
+  \item \spxentry{parse\_channels()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{password}\spxextra{src.data\_intake.data\_intake.NVRConnection.ChannelsRequest attribute}, 
+		\hyperpage{3}
+  \item \spxentry{password}\spxextra{src.pig\_sorting\_api.main.ChannelsRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{pen}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{21, 22}
+  \item \spxentry{pgie\_frame\_probe()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{12}
+  \item \spxentry{predictions}\spxextra{src.pig\_sorting\_api.main.ChainPredictionResponse attribute}, 
+		\hyperpage{19}
+  \item \spxentry{prepare\_dataset()}\spxextra{in module src.model\_training.trainer}, 
+		\hyperpage{14}
+  \item \spxentry{print\_pipeline\_status()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{12}
+  \item \spxentry{proxy\_training\_stream()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{27}
+  \item \spxentry{put()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+  \item \spxentry{put\_nowait()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+
+  \indexspace
+  \bigletter Q
+  \item \spxentry{qsize()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+  \item \spxentry{Queue}\spxextra{class in src.model\_training.trainer}, \hyperpage{12}
+
+  \indexspace
+  \bigletter R
+  \item \spxentry{read()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{read()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{32}
+  \item \spxentry{read1()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{read1()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{32}
+  \item \spxentry{readable()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{readable()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{32}
+  \item \spxentry{readinto()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{readinto()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{32}
+  \item \spxentry{readline()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{17}
+  \item \spxentry{readline()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{32}
+  \item \spxentry{readlines()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{readlines()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{33}
+  \item \spxentry{replace()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{replace()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{RequestException}, \hyperpage{5}
+  \item \spxentry{resolution}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{resolution}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, 
+		\hyperpage{25}
+  \item \spxentry{resolution}\spxextra{src.pig\_sorting\_api.main.timedelta attribute}, 
+		\hyperpage{31}
+  \item \spxentry{return\_annotated}\spxextra{src.pig\_sorting\_api.main.InferenceRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{rfid}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{21, 22}
+  \item \spxentry{rgb\_image\_names}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22, 23}
+  \item \spxentry{rgb\_images}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22, 23}
+  \item \spxentry{rtsp\_url}\spxextra{src.deep\_stream.api.CameraRequest attribute}, \hyperpage{11}
+  \item \spxentry{run\_training()}\spxextra{in module src.pig\_sorting\_api.main}, \hyperpage{28}
+
+  \indexspace
+  \bigletter S
+  \item \spxentry{save\_checkpoint()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{29}
+  \item \spxentry{save\_prediction()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{29}
+  \item \spxentry{save\_swine\_data()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{29}
+  \item \spxentry{SavePictureData()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{5}
+  \item \spxentry{SavePredictionRequest}\spxextra{class in src.pig\_sorting\_api.main}, 
+		\hyperpage{21}
+  \item \spxentry{second}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{second}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{25}
+  \item \spxentry{seconds}\spxextra{src.pig\_sorting\_api.main.timedelta attribute}, \hyperpage{31}
+  \item \spxentry{seek()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{seek()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{33}
+  \item \spxentry{seekable()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{seekable()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{33}
+  \item \spxentry{send\_to\_chain\_prediction()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{30}
+  \item \spxentry{sensor}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22, 23}
+  \item \spxentry{serial\_number}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata attribute}, 
+		\hyperpage{4, 5}
+  \item \spxentry{set\_camera\_interval()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{set\_frame\_interval()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{8}
+  \item \spxentry{set\_frame\_interval()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{30}
+  \item \spxentry{set\_inference\_variables()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{src}
+    \subitem \spxentry{module}, \hyperpage{1}
+  \item \spxentry{src.data\_intake}
+    \subitem \spxentry{module}, \hyperpage{1}
+  \item \spxentry{src.data\_intake.data\_intake}
+    \subitem \spxentry{module}, \hyperpage{1}
+  \item \spxentry{src.data\_intake.data\_intake.Client}
+    \subitem \spxentry{module}, \hyperpage{1}
+  \item \spxentry{src.data\_intake.data\_intake.NVRConnection}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{src.data\_intake.data\_intake.utils}
+    \subitem \spxentry{module}, \hyperpage{9}
+  \item \spxentry{src.data\_stream}
+    \subitem \spxentry{module}, \hyperpage{10}
+  \item \spxentry{src.data\_stream.StreamConversionServer}
+    \subitem \spxentry{module}, \hyperpage{10}
+  \item \spxentry{src.deep\_stream}
+    \subitem \spxentry{module}, \hyperpage{11}
+  \item \spxentry{src.deep\_stream.api}
+    \subitem \spxentry{module}, \hyperpage{11}
+  \item \spxentry{src.deep\_stream.deepstream}
+    \subitem \spxentry{module}, \hyperpage{11}
+  \item \spxentry{src.model\_deploy}
+    \subitem \spxentry{module}, \hyperpage{12}
+  \item \spxentry{src.model\_training}
+    \subitem \spxentry{module}, \hyperpage{12}
+  \item \spxentry{src.model\_training.trainer}
+    \subitem \spxentry{module}, \hyperpage{12}
+  \item \spxentry{src.pig\_sorting\_api}
+    \subitem \spxentry{module}, \hyperpage{16}
+  \item \spxentry{src.pig\_sorting\_api.client}
+    \subitem \spxentry{module}, \hyperpage{16}
+  \item \spxentry{src.pig\_sorting\_api.main}
+    \subitem \spxentry{module}, \hyperpage{16}
+  \item \spxentry{src.pig\_sorting\_streamlit}
+    \subitem \spxentry{module}, \hyperpage{32}
+  \item \spxentry{src.pig\_sorting\_streamlit.app}
+    \subitem \spxentry{module}, \hyperpage{32}
+  \item \spxentry{start\_watcher\_loop()}\spxextra{in module src.pig\_sorting\_api.main}, 
+		\hyperpage{31}
+  \item \spxentry{startup\_event()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{8}
+  \item \spxentry{stop\_release\_source()}\spxextra{in module src.deep\_stream.deepstream}, 
+		\hyperpage{12}
+  \item \spxentry{stream()}\spxextra{in module src.data\_stream.StreamConversionServer}, 
+		\hyperpage{11}
+  \item \spxentry{stream\_training()}\spxextra{in module src.model\_training.trainer}, 
+		\hyperpage{14}
+  \item \spxentry{strptime()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{2}
+  \item \spxentry{strptime()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, 
+		\hyperpage{25}
+  \item \spxentry{SwineDataSave}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{21}
+
+  \indexspace
+  \bigletter T
+  \item \spxentry{tagReader()}\spxextra{in module src.data\_intake.data\_intake.utils}, 
+		\hyperpage{9}
+  \item \spxentry{task\_done()}\spxextra{src.model\_training.trainer.Queue method}, \hyperpage{13}
+  \item \spxentry{tell()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{tell()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{33}
+  \item \spxentry{thermal\_image\_names}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22, 23}
+  \item \spxentry{thermal\_images}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22, 23}
+  \item \spxentry{time()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{time()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{timedelta}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{31}
+  \item \spxentry{times}\spxextra{src.pig\_sorting\_api.main.TimesRequest attribute}, 
+		\hyperpage{23}
+  \item \spxentry{TimesRequest}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{23}
+  \item \spxentry{timestamp}\spxextra{src.pig\_sorting\_api.main.SwineDataSave attribute}, 
+		\hyperpage{22, 23}
+  \item \spxentry{timestamp()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{timestamp()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{timetuple()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{timetuple()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{timetz()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{timetz()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{timezone}\spxextra{class in src.pig\_sorting\_api.main}, \hyperpage{31}
+  \item \spxentry{total\_seconds()}\spxextra{src.pig\_sorting\_api.main.timedelta method}, 
+		\hyperpage{31}
+  \item \spxentry{train\_model()}\spxextra{in module src.model\_training.trainer}, \hyperpage{15}
+  \item \spxentry{train\_model\_stream()}\spxextra{in module src.model\_training.trainer}, 
+		\hyperpage{15}
+  \item \spxentry{trigger\_capture()}\spxextra{in module src.data\_intake.data\_intake.NVRConnection}, 
+		\hyperpage{9}
+  \item \spxentry{trigger\_picture()}\spxextra{in module src.pig\_sorting\_streamlit.app}, 
+		\hyperpage{34}
+  \item \spxentry{truncate()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{truncate()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{33}
+  \item \spxentry{tzinfo}\spxextra{src.data\_intake.data\_intake.Client.datetime attribute}, 
+		\hyperpage{2}
+  \item \spxentry{tzinfo}\spxextra{src.pig\_sorting\_api.main.datetime attribute}, \hyperpage{25}
+  \item \spxentry{tzname()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{tzname()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{tzname()}\spxextra{src.pig\_sorting\_api.main.timezone method}, \hyperpage{31}
+
+  \indexspace
+  \bigletter U
+  \item \spxentry{unzip\_file()}\spxextra{in module src.model\_training.trainer}, \hyperpage{16}
+  \item \spxentry{user\_comment}\spxextra{src.data\_intake.data\_intake.NVRConnection.ImageMetadata attribute}, 
+		\hyperpage{4, 5}
+  \item \spxentry{username}\spxextra{src.data\_intake.data\_intake.NVRConnection.ChannelsRequest attribute}, 
+		\hyperpage{3}
+  \item \spxentry{username}\spxextra{src.pig\_sorting\_api.main.ChannelsRequest attribute}, 
+		\hyperpage{20}
+  \item \spxentry{utc}\spxextra{src.pig\_sorting\_api.main.timezone attribute}, \hyperpage{31}
+  \item \spxentry{utcfromtimestamp()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{2}
+  \item \spxentry{utcfromtimestamp()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, 
+		\hyperpage{25}
+  \item \spxentry{utcnow()}\spxextra{src.data\_intake.data\_intake.Client.datetime class method}, 
+		\hyperpage{2}
+  \item \spxentry{utcnow()}\spxextra{src.pig\_sorting\_api.main.datetime class method}, 
+		\hyperpage{25}
+  \item \spxentry{utcoffset()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{utcoffset()}\spxextra{src.pig\_sorting\_api.main.datetime method}, \hyperpage{25}
+  \item \spxentry{utcoffset()}\spxextra{src.pig\_sorting\_api.main.timezone method}, \hyperpage{32}
+  \item \spxentry{utctimetuple()}\spxextra{src.data\_intake.data\_intake.Client.datetime method}, 
+		\hyperpage{2}
+  \item \spxentry{utctimetuple()}\spxextra{src.pig\_sorting\_api.main.datetime method}, 
+		\hyperpage{25}
+
+  \indexspace
+  \bigletter W
+  \item \spxentry{watch\_mongo()}\spxextra{in module src.pig\_sorting\_api.main}, \hyperpage{32}
+  \item \spxentry{writable()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{writable()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{33}
+  \item \spxentry{write()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{write()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, \hyperpage{33}
+  \item \spxentry{writeExifTag()}\spxextra{in module src.data\_intake.data\_intake.utils}, 
+		\hyperpage{9}
+  \item \spxentry{writelines()}\spxextra{src.pig\_sorting\_api.main.BytesIO method}, \hyperpage{18}
+  \item \spxentry{writelines()}\spxextra{src.pig\_sorting\_streamlit.app.BytesIO method}, 
+		\hyperpage{33}
+
+\end{sphinxtheindex}

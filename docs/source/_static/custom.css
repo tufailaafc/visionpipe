@@ -1,0 +1,112 @@
+/* --- Global Layout --- */
+body {
+    line-height: 1.7;
+    font-size: 16px;
+    color: #222;
+}
+
+/* --- Section & Header Spacing --- */
+div.section {
+    margin-bottom: 4em;
+}
+
+h1, h2, h3, h4 {
+    margin-top: 2em;
+    margin-bottom: 1.2em;
+    font-weight: 600;
+}
+
+/* --- Class, Function, and Method Layout --- */
+dl.class, dl.function, dl.method {
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 1.2em 1.5em;
+    margin-bottom: 2.8em;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+dl.class:hover, dl.function:hover, dl.method:hover {
+    background: #f4f9ff;
+    border-color: #c8e1ff;
+}
+
+/* --- Definition Terms (like Parameters, Returns) --- */
+dt {
+    font-weight: 600;
+    margin-bottom: 0.6em;
+    color: #0052cc;
+}
+
+/* --- Definition Descriptions --- */
+dd {
+    margin-left: 1em;
+    margin-bottom: 1em;
+}
+
+/* --- Code and Literal Blocks --- */
+.highlight pre, code {
+    background-color: #f7f9fa;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 0.4em 0.6em;
+    margin-bottom: 1.2em;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    line-height: 1.5;
+}
+
+/* --- Signature and Parameters --- */
+.sig-name {
+    font-weight: bold;
+    color: #1a1a1a;
+}
+
+.sig-param {
+    color: #444;
+}
+
+/* --- Add breathing room between member lists --- */
+div.py.class, div.py.function, div.py.method {
+    margin-bottom: 3em !important;
+}
+
+/* --- Table formatting (for args/returns) --- */
+table.docutils {
+    border-collapse: separate;
+    border-spacing: 0 0.5em;
+}
+
+table.docutils th, table.docutils td {
+    padding: 0.6em 1em;
+    border: 1px solid #e2e2e2;
+}
+
+table.docutils th {
+    background: #f2f2f2;
+    font-weight: 600;
+}
+
+/* --- Improve inline code contrast --- */
+code.literal {
+    background: #f2f2f2;
+    border-radius: 4px;
+    padding: 2px 5px;
+}
+
+/* --- Links --- */
+a {
+    color: #0066cc;
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* --- TODO and Notes Blocks --- */
+.admonition {
+    border-left: 5px solid #007acc;
+    background: #f5faff;
+    padding: 0.8em 1em;
+    margin-bottom: 2em;
+    border-radius: 8px;
+}

@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src.pig_sorting_api.main module &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="src.pig_sorting_streamlit package" href="src.pig_sorting_streamlit.html" />
+    <link rel="prev" title="src.pig_sorting_api.client module" href="src.pig_sorting_api.client.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.pig_sorting_api.main">
+<span id="src-pig-sorting-api-main-module"></span><h1>src.pig_sorting_api.main module<a class="headerlink" href="#module-src.pig_sorting_api.main" title="Link to this heading">¶</a></h1>
+<p>FastAPI API for meat evaluation and image processing pipeline.</p>
+<p>This module provides:
+- Asynchronous MongoDB integration using Motor.
+- Endpoints for retrieving metadata and images.
+- Endpoints for triggering model training and chain predictions.
+- A MongoDB watcher to automatically process newly inserted images.
+- Utilities to convert images to base64, save annotated predictions, and log results.</p>
+<p>Endpoints include:
+- /api/v1/mongoData          : Fetch all metadata from MongoDB.
+- /api/v1/images/            : Fetch images between given timestamps.
+- /api/v1/training/trainer   : Trigger model training.
+- /api/v1/training/stream_trainer : Stream training logs from GPU container.
+- /chain_predict             : Forward chain prediction requests to model-deploy.
+- /save_prediction           : Save annotated prediction results to MongoDB.
+- /api/v1/collector/capture  : Trigger manual capture of images.
+- /api/v1/collector/frame_interval : Set camera frame interval.</p>
+<p>Dependencies:
+- FastAPI
+- Motor (Async MongoDB client)
+- httpx (Async HTTP requests)
+- PIL, OpenCV, NumPy
+- pymongo, bson</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.Any">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">Any</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/typing.html#Any"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.Any" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Special type indicating an unconstrained type.</p>
+<ul class="simple">
+<li><p>Any is compatible with every type.</p></li>
+<li><p>Any assumed to have all methods.</p></li>
+<li><p>All values assumed to be instances of Any.</p></li>
+</ul>
+<p>Note that all the above statements are true from the point of view of
+static type checkers. At runtime, Any should not be used with instance
+checks.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">BytesIO</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">initial_bytes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">b''</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">_BufferedIOBase</span></code></p>
+<p>Buffered I/O implementation using an in-memory bytes buffer.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.close">
+<span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.close" title="Link to this definition">¶</a></dt>
+<dd><p>Disable all I/O operations.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.closed">
+<span class="sig-name descname"><span class="pre">closed</span></span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.closed" title="Link to this definition">¶</a></dt>
+<dd><p>True if the file is closed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.flush">
+<span class="sig-name descname"><span class="pre">flush</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.flush" title="Link to this definition">¶</a></dt>
+<dd><p>Does nothing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.getbuffer">
+<span class="sig-name descname"><span class="pre">getbuffer</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.getbuffer" title="Link to this definition">¶</a></dt>
+<dd><p>Get a read-write view over the contents of the BytesIO object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.getvalue">
+<span class="sig-name descname"><span class="pre">getvalue</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.getvalue" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve the entire contents of the BytesIO object.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.isatty">
+<span class="sig-name descname"><span class="pre">isatty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.isatty" title="Link to this definition">¶</a></dt>
+<dd><p>Always returns False.</p>
+<p>BytesIO objects are not connected to a TTY-like device.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.read">
+<span class="sig-name descname"><span class="pre">read</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.read" title="Link to this definition">¶</a></dt>
+<dd><p>Read at most size bytes, returned as a bytes object.</p>
+<p>If the size argument is negative, read until EOF is reached.
+Return an empty bytes object at EOF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.read1">
+<span class="sig-name descname"><span class="pre">read1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.read1" title="Link to this definition">¶</a></dt>
+<dd><p>Read at most size bytes, returned as a bytes object.</p>
+<p>If the size argument is negative or omitted, read until EOF is reached.
+Return an empty bytes object at EOF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.readable">
+<span class="sig-name descname"><span class="pre">readable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.readable" title="Link to this definition">¶</a></dt>
+<dd><p>Returns True if the IO object can be read.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.readinto">
+<span class="sig-name descname"><span class="pre">readinto</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.readinto" title="Link to this definition">¶</a></dt>
+<dd><p>Read bytes into buffer.</p>
+<p>Returns number of bytes read (0 for EOF), or None if the object
+is set not to block and has no data to read.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.readline">
+<span class="sig-name descname"><span class="pre">readline</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.readline" title="Link to this definition">¶</a></dt>
+<dd><p>Next line from the file, as a bytes object.</p>
+<p>Retain newline.  A non-negative size argument limits the maximum
+number of bytes to return (an incomplete line may be returned then).
+Return an empty bytes object at EOF.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.readlines">
+<span class="sig-name descname"><span class="pre">readlines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.readlines" title="Link to this definition">¶</a></dt>
+<dd><p>List of bytes objects, each a line from the file.</p>
+<p>Call readline() repeatedly and return a list of the lines so read.
+The optional size argument, if given, is an approximate bound on the
+total number of bytes in the lines returned.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.seek">
+<span class="sig-name descname"><span class="pre">seek</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">whence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.seek" title="Link to this definition">¶</a></dt>
+<dd><p>Change stream position.</p>
+<dl class="simple">
+<dt>Seek to byte offset pos relative to position indicated by whence:</dt><dd><p>0  Start of stream (the default).  pos should be &gt;= 0;
+1  Current position - pos may be negative;
+2  End of stream - pos usually negative.</p>
+</dd>
+</dl>
+<p>Returns the new absolute position.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.seekable">
+<span class="sig-name descname"><span class="pre">seekable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.seekable" title="Link to this definition">¶</a></dt>
+<dd><p>Returns True if the IO object can be seeked.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.tell">
+<span class="sig-name descname"><span class="pre">tell</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.tell" title="Link to this definition">¶</a></dt>
+<dd><p>Current file position, an integer.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.truncate">
+<span class="sig-name descname"><span class="pre">truncate</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.truncate" title="Link to this definition">¶</a></dt>
+<dd><p>Truncate the file to at most size bytes.</p>
+<p>Size defaults to the current file position, as returned by tell().
+The current file position is unchanged.  Returns the new size.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.writable">
+<span class="sig-name descname"><span class="pre">writable</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.writable" title="Link to this definition">¶</a></dt>
+<dd><p>Returns True if the IO object can be written.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.write">
+<span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.write" title="Link to this definition">¶</a></dt>
+<dd><p>Write bytes to file.</p>
+<p>Return the number of bytes written.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.BytesIO.writelines">
+<span class="sig-name descname"><span class="pre">writelines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lines</span></span></em>, <em class="sig-param"><span class="positional-only-separator o"><abbr title="Positional-only parameter separator (PEP 570)"><span class="pre">/</span></abbr></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.BytesIO.writelines" title="Link to this definition">¶</a></dt>
+<dd><p>Write lines to the file.</p>
+<p>Note that newlines are not added.  lines can be any iterable object
+producing bytes-like objects. This is equivalent to calling write() for
+each element.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.CaptureRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">CaptureRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#CaptureRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.CaptureRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for triggering manual data captures.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.CaptureRequest.channels">
+<span class="sig-name descname"><span class="pre">channels</span></span><a class="headerlink" href="#src.pig_sorting_api.main.CaptureRequest.channels" title="Link to this definition">¶</a></dt>
+<dd><p>List of channel IDs to capture from.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.CaptureRequest.comment">
+<span class="sig-name descname"><span class="pre">comment</span></span><a class="headerlink" href="#src.pig_sorting_api.main.CaptureRequest.comment" title="Link to this definition">¶</a></dt>
+<dd><p>Optional global comment applied to all
+captured channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.CaptureRequest.comments">
+<span class="sig-name descname"><span class="pre">comments</span></span><a class="headerlink" href="#src.pig_sorting_api.main.CaptureRequest.comments" title="Link to this definition">¶</a></dt>
+<dd><p>Optional per-channel comments
+keyed by channel ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[int, str] | None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">channels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id0" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">comment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id1" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">comments</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id2" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainPredictionRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">ChainPredictionRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#ChainPredictionRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.ChainPredictionRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for chained model predictions.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainPredictionRequest.model_names">
+<span class="sig-name descname"><span class="pre">model_names</span></span><a class="headerlink" href="#src.pig_sorting_api.main.ChainPredictionRequest.model_names" title="Link to this definition">¶</a></dt>
+<dd><p>Ordered list of model identifiers to
+execute as a prediction chain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainPredictionRequest.instances">
+<span class="sig-name descname"><span class="pre">instances</span></span><a class="headerlink" href="#src.pig_sorting_api.main.ChainPredictionRequest.instances" title="Link to this definition">¶</a></dt>
+<dd><p>List of input instances to be
+passed through the model chain. Each dictionary represents
+a single instance and must conform to the backend model
+input schema which expects the List to contain base64 encoded images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict[str, str]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainPredictionRequest.parameters">
+<span class="sig-name descname"><span class="pre">parameters</span></span><a class="headerlink" href="#src.pig_sorting_api.main.ChainPredictionRequest.parameters" title="Link to this definition">¶</a></dt>
+<dd><p>Optional configuration
+parameters forwarded to the backend prediction service.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[Dict[str, <a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any">Any</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">instances</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id3" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">model_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id4" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">parameters</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="typing.Any"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id5" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainPredictionResponse">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">ChainPredictionResponse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#ChainPredictionResponse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.ChainPredictionResponse" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainPredictionResponse.predictions">
+<span class="sig-name descname"><span class="pre">predictions</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="typing.Any"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#src.pig_sorting_api.main.ChainPredictionResponse.predictions" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">ChainResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#ChainResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.ChainResult" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainResult.annotated_image">
+<span class="sig-name descname"><span class="pre">annotated_image</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#src.pig_sorting_api.main.ChainResult.annotated_image" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChainResult.chain">
+<span class="sig-name descname"><span class="pre">chain</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#src.pig_sorting_api.main.ModelResult" title="src.pig_sorting_api.main.ModelResult"><span class="pre">ModelResult</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#src.pig_sorting_api.main.ChainResult.chain" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChannelsRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">ChannelsRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#ChannelsRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.ChannelsRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for retrieving active and connected camera ids.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChannelsRequest.username">
+<span class="sig-name descname"><span class="pre">username</span></span><a class="headerlink" href="#src.pig_sorting_api.main.ChannelsRequest.username" title="Link to this definition">¶</a></dt>
+<dd><p>The username to log into the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChannelsRequest.password">
+<span class="sig-name descname"><span class="pre">password</span></span><a class="headerlink" href="#src.pig_sorting_api.main.ChannelsRequest.password" title="Link to this definition">¶</a></dt>
+<dd><p>The password to log into the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ChannelsRequest.nvr_ip">
+<span class="sig-name descname"><span class="pre">nvr_ip</span></span><a class="headerlink" href="#src.pig_sorting_api.main.ChannelsRequest.nvr_ip" title="Link to this definition">¶</a></dt>
+<dd><p>The ip to log into the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">nvr_ip</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id6" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">password</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id7" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">username</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id8" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.FrameIntervalRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">FrameIntervalRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#FrameIntervalRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.FrameIntervalRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for updating camera frame capture intervals.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.FrameIntervalRequest.channel">
+<span class="sig-name descname"><span class="pre">channel</span></span><a class="headerlink" href="#src.pig_sorting_api.main.FrameIntervalRequest.channel" title="Link to this definition">¶</a></dt>
+<dd><p>Camera channel identifier.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.FrameIntervalRequest.interval">
+<span class="sig-name descname"><span class="pre">interval</span></span><a class="headerlink" href="#src.pig_sorting_api.main.FrameIntervalRequest.interval" title="Link to this definition">¶</a></dt>
+<dd><p>Number of frames between image captures.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">channel</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#id9" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">interval</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#id10" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.InferenceRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">InferenceRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#InferenceRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.InferenceRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.InferenceRequest.confidence">
+<span class="sig-name descname"><span class="pre">confidence</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.5</span></em><a class="headerlink" href="#src.pig_sorting_api.main.InferenceRequest.confidence" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.InferenceRequest.image_base64">
+<span class="sig-name descname"><span class="pre">image_base64</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#src.pig_sorting_api.main.InferenceRequest.image_base64" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.InferenceRequest.model_name">
+<span class="sig-name descname"><span class="pre">model_name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#src.pig_sorting_api.main.InferenceRequest.model_name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.InferenceRequest.return_annotated">
+<span class="sig-name descname"><span class="pre">return_annotated</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">bool</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#src.pig_sorting_api.main.InferenceRequest.return_annotated" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ModelResult">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">ModelResult</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#ModelResult"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.ModelResult" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ModelResult.detection_count">
+<span class="sig-name descname"><span class="pre">detection_count</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#src.pig_sorting_api.main.ModelResult.detection_count" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ModelResult.detections">
+<span class="sig-name descname"><span class="pre">detections</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="typing.Any"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#src.pig_sorting_api.main.ModelResult.detections" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.ModelResult.model">
+<span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#src.pig_sorting_api.main.ModelResult.model" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SavePredictionRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">SavePredictionRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#SavePredictionRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.SavePredictionRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for saving annotated prediction results.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SavePredictionRequest.annotated_image">
+<span class="sig-name descname"><span class="pre">annotated_image</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SavePredictionRequest.annotated_image" title="Link to this definition">¶</a></dt>
+<dd><p>Base64-encoded image containing model
+annotations (e.g., bounding boxes, labels).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SavePredictionRequest.detections">
+<span class="sig-name descname"><span class="pre">detections</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SavePredictionRequest.detections" title="Link to this definition">¶</a></dt>
+<dd><p>List of detection results such
+as bounding boxes, class labels, and confidence scores.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict[str, <a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any">Any</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SavePredictionRequest.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SavePredictionRequest.metadata" title="Link to this definition">¶</a></dt>
+<dd><p>Optional additional metadata
+associated with the prediction.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[Dict[str, <a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any">Any</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SavePredictionRequest.ImageName">
+<span class="sig-name descname"><span class="pre">ImageName</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SavePredictionRequest.ImageName" title="Link to this definition">¶</a></dt>
+<dd><p>Optional base name for the saved image
+file. If not provided, a timestamp-based name is used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[str]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">ImageName</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id11" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">annotated_image</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id12" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">detections</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="typing.Any"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id13" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id14">
+<span class="sig-name descname"><span class="pre">metadata</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="typing.Any"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id14" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">SwineDataSave</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#SwineDataSave"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for saving data produced from the swine unit.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.pen">
+<span class="sig-name descname"><span class="pre">pen</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.pen" title="Link to this definition">¶</a></dt>
+<dd><p>A string containing the idetifier for the pen.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.rfid">
+<span class="sig-name descname"><span class="pre">rfid</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.rfid" title="Link to this definition">¶</a></dt>
+<dd><p>A string containing the rfid of the pig that triggered the capture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.comment">
+<span class="sig-name descname"><span class="pre">comment</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.comment" title="Link to this definition">¶</a></dt>
+<dd><p>A string holding any comments for this capture.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.depth_images">
+<span class="sig-name descname"><span class="pre">depth_images</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.depth_images" title="Link to this definition">¶</a></dt>
+<dd><p>A list of depth images encoded in base64.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.depth_image_names">
+<span class="sig-name descname"><span class="pre">depth_image_names</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.depth_image_names" title="Link to this definition">¶</a></dt>
+<dd><p>A list of depth image names that correspond with depth_images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.thermal_images">
+<span class="sig-name descname"><span class="pre">thermal_images</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.thermal_images" title="Link to this definition">¶</a></dt>
+<dd><p>A list of thermal images encoded in base64.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.thermal_image_names">
+<span class="sig-name descname"><span class="pre">thermal_image_names</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.thermal_image_names" title="Link to this definition">¶</a></dt>
+<dd><p>A list of thermal image names that correspond with thermal_images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.rgb_images">
+<span class="sig-name descname"><span class="pre">rgb_images</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.rgb_images" title="Link to this definition">¶</a></dt>
+<dd><p>A list of rgb images encoded in base64.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.rgb_image_names">
+<span class="sig-name descname"><span class="pre">rgb_image_names</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.rgb_image_names" title="Link to this definition">¶</a></dt>
+<dd><p>A list of rgb image names that correspond with rgb_images.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list(str)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.sensor">
+<span class="sig-name descname"><span class="pre">sensor</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.sensor" title="Link to this definition">¶</a></dt>
+<dd><p>Various sensor data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional(Dict[str, <a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any">Any</a>])</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.SwineDataSave.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><a class="headerlink" href="#src.pig_sorting_api.main.SwineDataSave.timestamp" title="Link to this definition">¶</a></dt>
+<dd><p>A timestamp for when the capture happened.
+The timezone is assumed to be utc</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#src.pig_sorting_api.main.datetime" title="src.pig_sorting_api.main.datetime">datetime</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id15">
+<span class="sig-name descname"><span class="pre">comment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id15" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id16">
+<span class="sig-name descname"><span class="pre">depth_image_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id16" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id17">
+<span class="sig-name descname"><span class="pre">depth_images</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id17" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id18">
+<span class="sig-name descname"><span class="pre">pen</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id18" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id19">
+<span class="sig-name descname"><span class="pre">rfid</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id19" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id20">
+<span class="sig-name descname"><span class="pre">rgb_image_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id20" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id21">
+<span class="sig-name descname"><span class="pre">rgb_images</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id21" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id22">
+<span class="sig-name descname"><span class="pre">sensor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="typing.Any"><span class="pre">Any</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id22" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id23">
+<span class="sig-name descname"><span class="pre">thermal_image_names</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id23" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id24">
+<span class="sig-name descname"><span class="pre">thermal_images</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id24" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id25">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id25" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.TimesRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">TimesRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#TimesRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.TimesRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.TimesRequest.times">
+<span class="sig-name descname"><span class="pre">times</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#src.pig_sorting_api.main.TimesRequest.times" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.capture">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">capture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.CaptureRequest" title="src.pig_sorting_api.main.CaptureRequest"><span class="pre">CaptureRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.capture" title="Link to this definition">¶</a></dt>
+<dd><p>Proxy a manual capture request to the data-collector service.</p>
+<p>This endpoint forwards a request to the data-collector to trigger
+one or more manual captures on the specified channels. Optional
+comments may be included globally or per channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.CaptureRequest" title="src.pig_sorting_api.main.CaptureRequest"><em>CaptureRequest</em></a>) – Capture configuration including
+channel identifiers and optional comments.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON response returned by the data-collector service.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If the data-collector service is unreachable</p></li>
+<li><p><strong>or returns an unexpected error.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.channels">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">channels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.ChannelsRequest" title="src.pig_sorting_api.main.ChannelsRequest"><span class="pre">ChannelsRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.channels" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve the list of active and connected camera channels from a network video recorder (NVR).</p>
+<p>This endpoint proxies a request to the data-intake service, which connects
+to the specified NVR and returns a list of currently active and connected
+camera channels. Optional authentication credentials can be provided if
+required by the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.ChannelsRequest" title="src.pig_sorting_api.main.ChannelsRequest"><em>ChannelsRequest</em></a>) – NVR connection details and optional credentials.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON response from the data-intake service containing camera
+channel information.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>HTTPException</strong> – If the data-intake service is unreachable or returns an error.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.convert_objectid_to_str">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">convert_objectid_to_str</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#convert_objectid_to_str"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.convert_objectid_to_str" title="Link to this definition">¶</a></dt>
+<dd><p>Recursively convert MongoDB ObjectId values to strings.</p>
+<p>This function traverses nested dictionaries and lists, replacing
+any instances of <code class="docutils literal notranslate"><span class="pre">bson.ObjectId</span></code> with their string representation.
+All other data types are returned unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>data</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><em>Any</em></a>) – Input data that may contain dictionaries, lists,
+or <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code> values.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The input data with all <code class="docutils literal notranslate"><span class="pre">ObjectId</span></code> instances converted
+to strings.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any">Any</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">datetime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">hour</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">minute</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">second</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">microsecond</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">tzinfo</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.pig_sorting_api.main.datetime.date" title="src.pig_sorting_api.main.datetime.date"><code class="xref py py-class docutils literal notranslate"><span class="pre">date</span></code></a></p>
+<p>The year, month and day arguments are required. tzinfo may be None, or an
+instance of a tzinfo subclass. The remaining arguments may be ints.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.astimezone">
+<span class="sig-name descname"><span class="pre">astimezone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.astimezone" title="Link to this definition">¶</a></dt>
+<dd><p>tz -&gt; convert to local time in new timezone tz</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.combine">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">combine</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.combine" title="Link to this definition">¶</a></dt>
+<dd><p>date, time -&gt; datetime with same date and time fields</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.ctime">
+<span class="sig-name descname"><span class="pre">ctime</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.ctime" title="Link to this definition">¶</a></dt>
+<dd><p>Return ctime() style string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.date">
+<span class="sig-name descname"><span class="pre">date</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.date" title="Link to this definition">¶</a></dt>
+<dd><p>Return date object with same year, month and day.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.dst">
+<span class="sig-name descname"><span class="pre">dst</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.dst" title="Link to this definition">¶</a></dt>
+<dd><p>Return self.tzinfo.dst(self).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.fold">
+<span class="sig-name descname"><span class="pre">fold</span></span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.fold" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.fromisoformat">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromisoformat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.fromisoformat" title="Link to this definition">¶</a></dt>
+<dd><p>string -&gt; datetime from a string in most ISO 8601 formats</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.fromtimestamp">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromtimestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.fromtimestamp" title="Link to this definition">¶</a></dt>
+<dd><p>timestamp[, tz] -&gt; tz’s local time from POSIX timestamp.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.hour">
+<span class="sig-name descname"><span class="pre">hour</span></span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.hour" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.isoformat">
+<span class="sig-name descname"><span class="pre">isoformat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.isoformat" title="Link to this definition">¶</a></dt>
+<dd><p>[sep] -&gt; string in ISO 8601 format, YYYY-MM-DDT[HH[:MM[:SS[.mmm[uuu]]]]][+HH:MM].
+sep is used to separate the year from the time, and defaults to ‘T’.
+The optional argument timespec specifies the number of additional terms
+of the time to include. Valid options are ‘auto’, ‘hours’, ‘minutes’,
+‘seconds’, ‘milliseconds’ and ‘microseconds’.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.max">
+<span class="sig-name descname"><span class="pre">max</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.datetime(9999,</span> <span class="pre">12,</span> <span class="pre">31,</span> <span class="pre">23,</span> <span class="pre">59,</span> <span class="pre">59,</span> <span class="pre">999999)</span></em><a class="headerlink" href="#src.pig_sorting_api.main.datetime.max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.microsecond">
+<span class="sig-name descname"><span class="pre">microsecond</span></span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.microsecond" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.min">
+<span class="sig-name descname"><span class="pre">min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.datetime(1,</span> <span class="pre">1,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">0)</span></em><a class="headerlink" href="#src.pig_sorting_api.main.datetime.min" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.minute">
+<span class="sig-name descname"><span class="pre">minute</span></span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.minute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.now">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">now</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.now" title="Link to this definition">¶</a></dt>
+<dd><p>Returns new datetime object representing current time local to tz.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>tz</dt><dd><p>Timezone object.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>If no tz is specified, uses local timezone.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.replace">
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.replace" title="Link to this definition">¶</a></dt>
+<dd><p>Return datetime with new specified fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.resolution">
+<span class="sig-name descname"><span class="pre">resolution</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timedelta(microseconds=1)</span></em><a class="headerlink" href="#src.pig_sorting_api.main.datetime.resolution" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.second">
+<span class="sig-name descname"><span class="pre">second</span></span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.second" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.strptime">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">strptime</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.strptime" title="Link to this definition">¶</a></dt>
+<dd><p>string, format -&gt; new datetime parsed from a string (like time.strptime()).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.time">
+<span class="sig-name descname"><span class="pre">time</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.time" title="Link to this definition">¶</a></dt>
+<dd><p>Return time object with same time but with tzinfo=None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.timestamp" title="Link to this definition">¶</a></dt>
+<dd><p>Return POSIX timestamp as float.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.timetuple">
+<span class="sig-name descname"><span class="pre">timetuple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.timetuple" title="Link to this definition">¶</a></dt>
+<dd><p>Return time tuple, compatible with time.localtime().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.timetz">
+<span class="sig-name descname"><span class="pre">timetz</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.timetz" title="Link to this definition">¶</a></dt>
+<dd><p>Return time object with same time and tzinfo.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.tzinfo">
+<span class="sig-name descname"><span class="pre">tzinfo</span></span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.tzinfo" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.tzname">
+<span class="sig-name descname"><span class="pre">tzname</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.tzname" title="Link to this definition">¶</a></dt>
+<dd><p>Return self.tzinfo.tzname(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.utcfromtimestamp">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">utcfromtimestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.utcfromtimestamp" title="Link to this definition">¶</a></dt>
+<dd><p>Construct a naive UTC datetime from a POSIX timestamp.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.utcnow">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">utcnow</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.utcnow" title="Link to this definition">¶</a></dt>
+<dd><p>Return a new datetime representing UTC day and time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.utcoffset">
+<span class="sig-name descname"><span class="pre">utcoffset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.utcoffset" title="Link to this definition">¶</a></dt>
+<dd><p>Return self.tzinfo.utcoffset(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.datetime.utctimetuple">
+<span class="sig-name descname"><span class="pre">utctimetuple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.datetime.utctimetuple" title="Link to this definition">¶</a></dt>
+<dd><p>Return UTC time tuple, compatible with time.localtime().</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.forward_chain_predict">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">forward_chain_predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.ChainPredictionRequest" title="src.pig_sorting_api.main.ChainPredictionRequest"><span class="pre">ChainPredictionRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.forward_chain_predict" title="Link to this definition">¶</a></dt>
+<dd><p>Forward a chained prediction request to the model-deploy service.</p>
+<p>This endpoint acts as a middleware layer that validates and forwards
+a chained prediction request to the backend model-deploy service,
+then returns the validated response to the client.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.ChainPredictionRequest" title="src.pig_sorting_api.main.ChainPredictionRequest"><em>ChainPredictionRequest</em></a>) – Chained prediction request
+containing model sequence, input instances, and optional
+parameters.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The prediction results returned by the
+backend service after validation.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#src.pig_sorting_api.main.ChainPredictionResponse" title="src.pig_sorting_api.main.ChainPredictionResponse">ChainPredictionResponse</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>HTTPException</strong> – <ul class="simple">
+<li><p>502 Bad Gateway: If the backend model-deploy service
+      returns an error response.
+    - 500 Internal Server Error: If an unexpected middleware
+      error occurs.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.get_images_by_date">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">get_images_by_date</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.TimesRequest" title="src.pig_sorting_api.main.TimesRequest"><span class="pre">TimesRequest</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#src.pig_sorting_api.main.get_images_by_date" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve all images captured within a specified time range.</p>
+<p>This endpoint accepts a start and end timestamp, queries the
+<code class="docutils literal notranslate"><span class="pre">metaData</span></code> MongoDB collection for records within that range,
+loads the corresponding image files from disk, and returns them
+as base64-encoded strings along with metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.TimesRequest" title="src.pig_sorting_api.main.TimesRequest"><em>TimesRequest</em></a>) – Request body containing a list of two
+ISO 8601 formatted timestamps representing the start and
+end of the desired time range.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A list of dictionaries, each containing:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">filename</span></code> (str): Name of the image file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">image</span></code> (str): Base64-encoded image data.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">timestamp</span></code> (str): ISO 8601 formatted capture time.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[dict]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If an unexpected error occurs while querying the</p></li>
+<li><p><strong>database</strong><strong>, </strong><strong>reading image files</strong><strong>, or </strong><strong>encoding the images.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.get_last_checkpoint">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">get_last_checkpoint</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#get_last_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.get_last_checkpoint" title="Link to this definition">¶</a></dt>
+<dd><p>Load the last checkpoint timestamp from MongoDB.</p>
+<p>If no checkpoint is found, returns the current time minus the catch-up window.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The timestamp of the last processed document.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#src.pig_sorting_api.main.datetime" title="src.pig_sorting_api.main.datetime">datetime</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.get_mongo_data">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">get_mongo_data</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#src.pig_sorting_api.main.get_mongo_data" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve all metadata records from the MongoDB collection.</p>
+<p>This endpoint queries the <code class="docutils literal notranslate"><span class="pre">metaData</span></code> collection in MongoDB,
+converts the result cursor into JSON-serializable Python objects,
+and returns all records to the client.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of metadata records retrieved from the
+<code class="docutils literal notranslate"><span class="pre">metaData</span></code> MongoDB collection.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[dict]</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If an unexpected error occurs while accessing</p></li>
+<li><p><strong>the database</strong><strong> or </strong><strong>serializing the results.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.get_swinedata">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">get_swinedata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.get_swinedata" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve all swinedata records from the MongoDB collection.</p>
+<p>This endpoint queries the <code class="docutils literal notranslate"><span class="pre">swinedata</span></code> collection in MongoDB,
+converts the result cursor into JSON-serializable Python objects,
+and returns all records to the client.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of swinedata records retrieved from the
+<code class="docutils literal notranslate"><span class="pre">swinedata</span></code> MongoDB collection.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list[dict]</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If an unexpected error occurs while accessing</p></li>
+<li><p><strong>the database</strong><strong> or </strong><strong>serializing the results.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.image_to_base64">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">image_to_base64</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">numpy.ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#image_to_base64"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.image_to_base64" title="Link to this definition">¶</a></dt>
+<dd><p>Convert an OpenCV image (NumPy array) to a base64-encoded PNG string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>np.ndarray</em>) – Input image. Can be grayscale or RGB.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Base64-encoded string of the PNG image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.load_default_models">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">load_default_models</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#load_default_models"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.load_default_models" title="Link to this definition">¶</a></dt>
+<dd><p>Load default models into the model-deploy service.</p>
+<p>This is typically called once at startup to ensure models are available for predictions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.proxy_training_stream">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">proxy_training_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epochs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.proxy_training_stream" title="Link to this definition">¶</a></dt>
+<dd><p>Stream a YOLO training job and log results upon completion.</p>
+<p>This endpoint forwards a training request to the GPU-enabled
+model-training service and streams training progress to the client
+using Server-Sent Events (SSE). Once training completes, the final
+results are logged to the MongoDB <code class="docutils literal notranslate"><span class="pre">training_logs</span></code> collection.</p>
+<dl class="simple">
+<dt>The following fields are logged to MongoDB:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">model_path</span></code> (str): Path to the pretrained model used.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset_path</span></code> (str): Location of the training dataset.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model_export_path</span></code> (str): Path to the newly trained model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">project</span></code> (str): Name of the project.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run</span></code> (str): Name of the training run.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">train_results</span></code> (dict | str): Training metrics and results.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">val_results</span></code> (dict | str): Validation metrics and results.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">date_time</span></code> (datetime): Timestamp when training completed.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_path</strong> (<em>str</em>) – Path to the pretrained YOLO model.</p></li>
+<li><p><strong>dataset_path</strong> (<em>str</em>) – Path to the dataset used for training.</p></li>
+<li><p><strong>project_name</strong> (<em>str</em>) – Logical name for the training project.</p></li>
+<li><p><strong>run_name</strong> (<em>str</em>) – Identifier for this specific training run.</p></li>
+<li><p><strong>epochs</strong> (<em>int</em>) – Number of training epochs to run.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A Server-Sent Events (SSE) stream emitting
+JSON-encoded training progress updates and a final completion
+event.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>StreamingResponse</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If the training service fails, the stream cannot</p></li>
+<li><p><strong>be established</strong><strong>, or </strong><strong>logging to the database is unsuccessful.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.run_training">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">run_training</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">project_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">run_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">fastapi.Query</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.run_training" title="Link to this definition">¶</a></dt>
+<dd><p>Start a YOLO training job with the specified parameters.</p>
+<p>This endpoint forwards a training request to the GPU-enabled
+model-training service, waits for training to complete, and logs
+the results to the MongoDB <code class="docutils literal notranslate"><span class="pre">training_logs</span></code> collection.</p>
+<dl class="simple">
+<dt>The following fields are logged to MongoDB:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">model_path</span></code> (str): Path to the pretrained model used.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">dataset_path</span></code> (str): Location of the training dataset.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model_export_path</span></code> (str): Path to the newly trained model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">project</span></code> (str): Name of the project.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">run</span></code> (str): Name of the training run.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">train_results</span></code> (str): Training metrics and results.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">val_results</span></code> (str): Validation metrics and results.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">date_time</span></code> (datetime): Timestamp when training completed.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model_path</strong> (<em>str</em>) – Path to the pretrained YOLO model.</p></li>
+<li><p><strong>dataset_path</strong> (<em>str</em>) – Path to the dataset used for training.</p></li>
+<li><p><strong>project_name</strong> (<em>str</em>) – Logical name for the training project.</p></li>
+<li><p><strong>run_name</strong> (<em>str</em>) – Identifier for this specific training run.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary containing:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">message</span></code> (str): Confirmation that training completed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">model_export_path</span></code> (str): Path to the trained model.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">train_results</span></code> (str): Training results.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">val_results</span></code> (str): Validation results.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If the training service fails, times out,</p></li>
+<li><p><strong>or logging to the database is unsuccessful.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.save_checkpoint">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">save_checkpoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.datetime" title="datetime.datetime"><span class="pre">datetime</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#save_checkpoint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.save_checkpoint" title="Link to this definition">¶</a></dt>
+<dd><p>Save the last processed timestamp to MongoDB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ts</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.datetime" title="src.pig_sorting_api.main.datetime"><em>datetime</em></a>) – Timestamp to save as the last processed checkpoint.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.save_prediction">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">save_prediction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.SavePredictionRequest" title="src.pig_sorting_api.main.SavePredictionRequest"><span class="pre">SavePredictionRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.save_prediction" title="Link to this definition">¶</a></dt>
+<dd><p>Persist annotated prediction output to disk and MongoDB.</p>
+<p>This endpoint decodes a base64-encoded annotated image, saves it to
+disk using a timestamped or user-provided name, and stores the
+associated prediction metadata in the MongoDB <code class="docutils literal notranslate"><span class="pre">predictions</span></code>
+collection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.SavePredictionRequest" title="src.pig_sorting_api.main.SavePredictionRequest"><em>SavePredictionRequest</em></a>) – Annotated image data, detection
+results, and optional metadata.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary containing:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code> (str): Operation status.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">id</span></code> (str): MongoDB ObjectId of the saved prediction.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> (str): Filesystem path to the saved annotated image.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If image decoding, file I/O, or database insertion</p></li>
+<li><p><strong>fails.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.save_swine_data">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">save_swine_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.SwineDataSave" title="src.pig_sorting_api.main.SwineDataSave"><span class="pre">SwineDataSave</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.save_swine_data" title="Link to this definition">¶</a></dt>
+<dd><p>Persist images and pen sensor readings output to disk and MongoDB.</p>
+<p>This endpoint decodes base64-encoded annotated images, saves it to
+disk using a timestamped or user-provided name, and stores the
+associated prediction metadata such as sensor readings and predicted weight in the MongoDB <code class="docutils literal notranslate"><span class="pre">predictions</span></code>
+collection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.SwineDataSave" title="src.pig_sorting_api.main.SwineDataSave"><em>SwineDataSave</em></a>) – <ul class="simple">
+<li><p>pen (str): A string containing the idetifier for the pen.</p></li>
+<li><p>rfid (str): A string containing the rfid of the pig that triggered the capture.</p></li>
+<li><p>comment (Optional(str)): A string holding any comments for this capture.</p></li>
+<li><p>depth_images (list(str)): A list of depth images encoded in base64.</p></li>
+<li><p>depth_image_names (list(str)): A list of depth image names that correspond with depth_images.</p></li>
+<li><p>thermal_images (list(str)): A list of thermal images encoded in base64.</p></li>
+<li><p>thermal_image_names (list(str)): A list of thermal image names that correspond with thermal_images.</p></li>
+<li><p>rgb_images (list(str)): A list of rgb images encoded in base64.</p></li>
+<li><p>rgb_image_names (list(str)): A list of rgb image names that correspond with rgb_images.</p></li>
+<li><p>sensor (Dict[str, Any]): Various sensor data.</p></li>
+<li><p>timestamp (datetime): A timestamp for when the capture happened. The timezone is assumed to be utc</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>A dictionary containing:</dt><dd><ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">status</span></code> (str): Operation status.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">id</span></code> (str): MongoDB ObjectId of the saved prediction.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">path</span></code> (str): Filesystem path to the saved annotated image.</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If image decoding, file I/O, or database insertion</p></li>
+<li><p><strong>fails.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.send_to_chain_prediction">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">send_to_chain_prediction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#send_to_chain_prediction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.send_to_chain_prediction" title="Link to this definition">¶</a></dt>
+<dd><p>Send an image to the chain prediction endpoint and save the annotated results.</p>
+<p>This function:
+- Reads the image asynchronously.
+- Encodes it as base64.
+- Sends it to the model-deploy chain prediction endpoint.
+- Flattens model detection results and attaches model names.
+- Saves the annotated image to disk.
+- Stores prediction metadata in MongoDB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>image_path</strong> (<em>str</em>) – Absolute path to the input image file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.set_frame_interval">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">set_frame_interval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.pig_sorting_api.main.FrameIntervalRequest" title="src.pig_sorting_api.main.FrameIntervalRequest"><span class="pre">FrameIntervalRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.set_frame_interval" title="Link to this definition">¶</a></dt>
+<dd><p>Update the frame capture interval for a specific camera.</p>
+<p>This endpoint proxies a request to the data-intake service to
+configure how frequently a camera captures images, based on
+a frame interval setting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.pig_sorting_api.main.FrameIntervalRequest" title="src.pig_sorting_api.main.FrameIntervalRequest"><em>FrameIntervalRequest</em></a>) – Configuration containing the
+camera channel and desired frame interval.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>JSON response returned by the data-intake service.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>HTTPException</strong> – If the data-intake service is unreachable</p></li>
+<li><p><strong>or returns an unexpected error.</strong> – </p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.start_watcher_loop">
+<span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">start_watcher_loop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#start_watcher_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.start_watcher_loop" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">timedelta</span></span><a class="headerlink" href="#src.pig_sorting_api.main.timedelta" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Difference between two datetime values.</p>
+<p>timedelta(days=0, seconds=0, microseconds=0, milliseconds=0, minutes=0, hours=0, weeks=0)</p>
+<p>All arguments are optional and default to 0.
+Arguments may be integers or floats, and may be positive or negative.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.days">
+<span class="sig-name descname"><span class="pre">days</span></span><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.days" title="Link to this definition">¶</a></dt>
+<dd><p>Number of days.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.max">
+<span class="sig-name descname"><span class="pre">max</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timedelta(days=999999999,</span> <span class="pre">seconds=86399,</span> <span class="pre">microseconds=999999)</span></em><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.microseconds">
+<span class="sig-name descname"><span class="pre">microseconds</span></span><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.microseconds" title="Link to this definition">¶</a></dt>
+<dd><p>Number of microseconds (&gt;= 0 and less than 1 second).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.min">
+<span class="sig-name descname"><span class="pre">min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timedelta(days=-999999999)</span></em><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.min" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.resolution">
+<span class="sig-name descname"><span class="pre">resolution</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timedelta(microseconds=1)</span></em><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.resolution" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.seconds">
+<span class="sig-name descname"><span class="pre">seconds</span></span><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.seconds" title="Link to this definition">¶</a></dt>
+<dd><p>Number of seconds (&gt;= 0 and less than 1 day).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timedelta.total_seconds">
+<span class="sig-name descname"><span class="pre">total_seconds</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.timedelta.total_seconds" title="Link to this definition">¶</a></dt>
+<dd><p>Total seconds in the duration.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">timezone</span></span><a class="headerlink" href="#src.pig_sorting_api.main.timezone" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.pig_sorting_api.main.datetime.tzinfo" title="src.pig_sorting_api.main.datetime.tzinfo"><code class="xref py py-class docutils literal notranslate"><span class="pre">tzinfo</span></code></a></p>
+<p>Fixed offset from UTC implementation of tzinfo.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.dst">
+<span class="sig-name descname"><span class="pre">dst</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.timezone.dst" title="Link to this definition">¶</a></dt>
+<dd><p>Return None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.fromutc">
+<span class="sig-name descname"><span class="pre">fromutc</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.timezone.fromutc" title="Link to this definition">¶</a></dt>
+<dd><p>datetime in UTC -&gt; datetime in local time.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.max">
+<span class="sig-name descname"><span class="pre">max</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timezone(datetime.timedelta(seconds=86340))</span></em><a class="headerlink" href="#src.pig_sorting_api.main.timezone.max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.min">
+<span class="sig-name descname"><span class="pre">min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timezone(datetime.timedelta(days=-1,</span> <span class="pre">seconds=60))</span></em><a class="headerlink" href="#src.pig_sorting_api.main.timezone.min" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.tzname">
+<span class="sig-name descname"><span class="pre">tzname</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.timezone.tzname" title="Link to this definition">¶</a></dt>
+<dd><p>If name is specified when timezone is created, returns the name.  Otherwise returns offset as ‘UTC(+|-)HH:MM’.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.utc">
+<span class="sig-name descname"><span class="pre">utc</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timezone.utc</span></em><a class="headerlink" href="#src.pig_sorting_api.main.timezone.utc" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.timezone.utcoffset">
+<span class="sig-name descname"><span class="pre">utcoffset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.pig_sorting_api.main.timezone.utcoffset" title="Link to this definition">¶</a></dt>
+<dd><p>Return fixed offset.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.pig_sorting_api.main.watch_mongo">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.pig_sorting_api.main.</span></span><span class="sig-name descname"><span class="pre">watch_mongo</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/pig_sorting_api/main.html#watch_mongo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.pig_sorting_api.main.watch_mongo" title="Link to this definition">¶</a></dt>
+<dd><p>Poll MongoDB for new images instead of using change streams.</p>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="src.data_intake.html">src.data_intake package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.data_stream.html">src.data_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.deep_stream.html">src.deep_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_deploy.html">src.model_deploy package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_training.html">src.model_training package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="src.pig_sorting_api.html">src.pig_sorting_api package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="src.pig_sorting_api.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="src.html">src package</a><ul>
+  <li><a href="src.pig_sorting_api.html">src.pig_sorting_api package</a><ul>
+      <li>Previous: <a href="src.pig_sorting_api.client.html" title="previous chapter">src.pig_sorting_api.client module</a></li>
+      <li>Next: <a href="src.pig_sorting_streamlit.html" title="next chapter">src.pig_sorting_streamlit package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/modules/src.pig_sorting_api.main.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

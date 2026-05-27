@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src.pig_sorting_api.client module &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="src.pig_sorting_api.main module" href="src.pig_sorting_api.main.html" />
+    <link rel="prev" title="src.pig_sorting_api package" href="src.pig_sorting_api.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.pig_sorting_api.client">
+<span id="src-pig-sorting-api-client-module"></span><h1>src.pig_sorting_api.client module<a class="headerlink" href="#module-src.pig_sorting_api.client" title="Link to this heading">¶</a></h1>
+<p>Asynchronous MongoDB client module using Motor.</p>
+<p>This module sets up an asynchronous connection to a MongoDB instance using
+credentials from environment variables and exposes:</p>
+<ul class="simple">
+<li><p><cite>client</cite>: The AsyncIOMotorClient instance connected to the MongoDB server.</p></li>
+<li><p><cite>db</cite>: The <cite>visionPipe</cite> database.</p></li>
+<li><p><cite>db_result</cite>: The <cite>metaData</cite> collection within the <cite>visionPipe</cite> database.</p></li>
+</ul>
+<p>Environment variables required:
+- MONGO_INITDB_ROOT_USERNAME
+- MONGO_INITDB_ROOT_PASSWORD</p>
+<dl>
+<dt>Usage:</dt><dd><p>from client_async import db_result</p>
+<p># Example asynchronous query
+result = await db_result.find_one({“some_field”: “value”})</p>
+</dd>
+</dl>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="src.data_intake.html">src.data_intake package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.data_stream.html">src.data_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.deep_stream.html">src.deep_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_deploy.html">src.model_deploy package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_training.html">src.model_training package</a></li>
+<li class="toctree-l3 current"><a class="reference internal" href="src.pig_sorting_api.html">src.pig_sorting_api package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="src.pig_sorting_api.html#submodules">Submodules</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="src.html">src package</a><ul>
+  <li><a href="src.pig_sorting_api.html">src.pig_sorting_api package</a><ul>
+      <li>Previous: <a href="src.pig_sorting_api.html" title="previous chapter">src.pig_sorting_api package</a></li>
+      <li>Next: <a href="src.pig_sorting_api.main.html" title="next chapter">src.pig_sorting_api.main module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/modules/src.pig_sorting_api.client.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

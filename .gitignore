@@ -28,5 +28,4 @@ models/YOLO/*
 !models/YOLO/.gitkeep
 visionpipe
 *__pycache__
-docs
-src/model_training/animal_weight_prediction
+

@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src.data_intake.data_intake.NVRConnection module &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="src.data_intake.data_intake.utils module" href="src.data_intake.data_intake.utils.html" />
+    <link rel="prev" title="src.data_intake.data_intake.Client module" href="src.data_intake.data_intake.Client.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.data_intake.data_intake.NVRConnection">
+<span id="src-data-intake-data-intake-nvrconnection-module"></span><h1>src.data_intake.data_intake.NVRConnection module<a class="headerlink" href="#module-src.data_intake.data_intake.NVRConnection" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.CapturePayload">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">CapturePayload</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#CapturePayload"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.CapturePayload" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Payload model for manual image capture requests.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.CapturePayload.channels">
+<span class="sig-name descname"><span class="pre">channels</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.CapturePayload.channels" title="Link to this definition">¶</a></dt>
+<dd><p>List of camera channels to trigger captures/pictures on.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[int]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.CapturePayload.comment">
+<span class="sig-name descname"><span class="pre">comment</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.CapturePayload.comment" title="Link to this definition">¶</a></dt>
+<dd><p>This will be able to hold a comment for all cameras in channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.CapturePayload.comments">
+<span class="sig-name descname"><span class="pre">comments</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.CapturePayload.comments" title="Link to this definition">¶</a></dt>
+<dd><p>comments for individual cameras mapped by camera channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[int, str], optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">channels</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id0" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">comment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id1" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">comments</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id2" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ChannelsRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">ChannelsRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#ChannelsRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ChannelsRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for retrieving active and connected camera ids.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ChannelsRequest.username">
+<span class="sig-name descname"><span class="pre">username</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ChannelsRequest.username" title="Link to this definition">¶</a></dt>
+<dd><p>The username to log into the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ChannelsRequest.password">
+<span class="sig-name descname"><span class="pre">password</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ChannelsRequest.password" title="Link to this definition">¶</a></dt>
+<dd><p>The password to log into the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ChannelsRequest.nvr_ip">
+<span class="sig-name descname"><span class="pre">nvr_ip</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ChannelsRequest.nvr_ip" title="Link to this definition">¶</a></dt>
+<dd><p>The ip to log into the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">nvr_ip</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id3" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">password</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id4" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">username</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id5" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.FrameIntervalRequest">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">FrameIntervalRequest</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#FrameIntervalRequest"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.FrameIntervalRequest" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Request model for updating camera frame intervals.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.FrameIntervalRequest.channel">
+<span class="sig-name descname"><span class="pre">channel</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.FrameIntervalRequest.channel" title="Link to this definition">¶</a></dt>
+<dd><p>The target camera which is tied to port number.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.FrameIntervalRequest.interval">
+<span class="sig-name descname"><span class="pre">interval</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.FrameIntervalRequest.interval" title="Link to this definition">¶</a></dt>
+<dd><p>Number of frames to skip between captures for this channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">channel</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#id6" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">interval</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#id7" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">ImageMetadata</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.Any" title="src.pig_sorting_api.main.Any"><span class="pre">Any</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#ImageMetadata"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<p>Model representing metadata for a captured image.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.image_path">
+<span class="sig-name descname"><span class="pre">image_path</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.image_path" title="Link to this definition">¶</a></dt>
+<dd><p>Path to the saved image file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.author">
+<span class="sig-name descname"><span class="pre">author</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.author" title="Link to this definition">¶</a></dt>
+<dd><p>Name or identifier of the user/system that captured the image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.serial_number">
+<span class="sig-name descname"><span class="pre">serial_number</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.serial_number" title="Link to this definition">¶</a></dt>
+<dd><p>Serial number of the camera.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.date_time">
+<span class="sig-name descname"><span class="pre">date_time</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.date_time" title="Link to this definition">¶</a></dt>
+<dd><p>Timestamp of when the image was captured.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.datetime" title="datetime.datetime">datetime.datetime</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.user_comment">
+<span class="sig-name descname"><span class="pre">user_comment</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.user_comment" title="Link to this definition">¶</a></dt>
+<dd><p>User-provided comment or note.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.description">
+<span class="sig-name descname"><span class="pre">description</span></span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.description" title="Link to this definition">¶</a></dt>
+<dd><p>Additional description of the image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str, optional</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.Config">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Config</span></span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#ImageMetadata.Config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.Config" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.ImageMetadata.Config.arbitrary_types_allowed">
+<span class="sig-name descname"><span class="pre">arbitrary_types_allowed</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.ImageMetadata.Config.arbitrary_types_allowed" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">author</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id8" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">date_time</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.datetime" title="datetime.datetime"><span class="pre">datetime</span></a></em><a class="headerlink" href="#id9" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">description</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id10" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">image_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#id11" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">serial_number</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id12" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">user_comment</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#id13" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.Lock">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">Lock</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.Lock" title="Link to this definition">¶</a></dt>
+<dd><p>allocate_lock() -&gt; lock object
+(allocate() is an obsolete synonym)</p>
+<p>Create a new lock object. See help(type(threading.Lock())) for
+information about locks.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.RequestException">
+<em class="property"><span class="k"><span class="pre">exception</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">RequestException</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/requests/exceptions.html#RequestException"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.RequestException" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">OSError</span></code></p>
+<p>There was an ambiguous exception that occurred while handling your
+request.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.SavePictureData">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">SavePictureData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">author</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">serialNumber</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dateTime</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userComment</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trgger_method</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#SavePictureData"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.SavePictureData" title="Link to this definition">¶</a></dt>
+<dd><p>Write EXIF metadata to an image and store metadata in MongoDB.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_path</strong> (<em>str</em>) – Path to the saved image.</p></li>
+<li><p><strong>author</strong> (<em>str</em>) – Name or identifier of the capture source.</p></li>
+<li><p><strong>serialNumber</strong> (<em>str</em>) – Device serial number.</p></li>
+<li><p><strong>dateTime</strong> (<a class="reference internal" href="src.pig_sorting_api.main.html#src.pig_sorting_api.main.datetime" title="datetime.datetime"><em>datetime.datetime</em></a>) – Timestamp of capture.</p></li>
+<li><p><strong>userComment</strong> (<em>str</em>) – User-provided comment.</p></li>
+<li><p><strong>description</strong> (<em>str</em>) – Description of the image content.</p></li>
+<li><p><strong>trgger_method</strong> (<em>str</em>) – How the capture was triggered (e.g., manual, interval).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Behavior:</dt><dd><ul class="simple">
+<li><p>Writes EXIF metadata into the image file.</p></li>
+<li><p>Inserts metadata document into MongoDB.</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition-todo admonition" id="id14">
+<p class="admonition-title">Todo</p>
+<p>add trigger_method to the database</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.capture_camera">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">capture_camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nvr_ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">channel</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">subtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#capture_camera"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.capture_camera" title="Link to this definition">¶</a></dt>
+<dd><p>Continuously capture frames from a camera channel, saving images and video.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>username</strong> (<em>str</em>) – NVR username.</p></li>
+<li><p><strong>password</strong> (<em>str</em>) – NVR password.</p></li>
+<li><p><strong>nvr_ip</strong> (<em>str</em>) – IP address of the NVR.</p></li>
+<li><p><strong>channel</strong> (<em>int</em>) – Camera channel to capture from.</p></li>
+<li><p><strong>subtype</strong> (<em>int</em><em>, </em><em>optional</em>) – Stream subtype (e.g., 0 = main stream, 1 = substream).
+Defaults to 0.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Behavior:</dt><dd><ul class="simple">
+<li><p>Saves continuous video stream to <cite>.avi</cite> file.</p></li>
+<li><p>Saves periodic still frames based on channel frame interval.</p></li>
+<li><p>Supports manual capture triggers via <cite>manual_capture_flags</cite>.</p></li>
+<li><p>Stops gracefully when <cite>stop_event</cite> is set.</p></li>
+</ul>
+</dd>
+<dt>Logs:</dt><dd><ul class="simple">
+<li><p>Frame dimensions, FPS, capture status, saved image paths.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.change_frame_interval">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">change_frame_interval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_interval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#change_frame_interval"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.change_frame_interval" title="Link to this definition">¶</a></dt>
+<dd><p>Update the capture frame interval for a channel and persist it to disk.</p>
+<p>Updates the global <cite>camera_frame_intervals</cite> for the given <cite>channel</cite> (stored as a
+string key) and writes the resulting mapping to FRAME_CONFIG_FILE (<cite>config.json</cite>)
+as pretty-printed JSON.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>channel</strong> (<em>int</em>) – Camera channel identifier to update.</p></li>
+<li><p><strong>frame_interval</strong> (<em>int</em>) – New interval expressed in number of frames between saved stills.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Globals modified:</dt><dd><p>camera_frame_intervals (dict[str, int]): Updated with the new interval for <cite>str(channel)</cite>.</p>
+</dd>
+<dt>Behaviour:</dt><dd><ul class="simple">
+<li><p>Writes the <cite>camera_frame_intervals</cite> mapping to FRAME_CONFIG_FILE.</p></li>
+<li><p>Logs success or failure.</p></li>
+</ul>
+</dd>
+<dt>Error handling:</dt><dd><ul class="simple">
+<li><p>Any exception raised while writing the file is caught and logged; the
+function does not re-raise exceptions.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.channels">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">channels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.data_intake.data_intake.NVRConnection.ChannelsRequest" title="src.data_intake.data_intake.NVRConnection.ChannelsRequest"><span class="pre">ChannelsRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.channels" title="Link to this definition">¶</a></dt>
+<dd><p>Channel request endpoint will return a set of currently connected channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>[“1”,”5”,”7”,”12”…] set of camera/channel ids.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>set</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>500 Internal Server Error</strong> – If channel request fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.getCameraChannels">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">getCameraChannels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nvr_ip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#getCameraChannels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.getCameraChannels" title="Link to this definition">¶</a></dt>
+<dd><p>Discover available camera channels from the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>username</strong> (<em>str</em>) – NVR username.</p></li>
+<li><p><strong>password</strong> (<em>str</em>) – NVR password.</p></li>
+<li><p><strong>nvr_ip</strong> (<em>str</em>) – IP address of the NVR.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A set of detected camera channel ie [“3”,”7”,”9”].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>set[str]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>socket.error</strong> – If network connection fails.</p></li>
+<li><p><strong>Fault</strong> – If ONVIF SOAP request fails.</p></li>
+<li><p><a class="reference internal" href="#src.data_intake.data_intake.NVRConnection.RequestException" title="src.data_intake.data_intake.NVRConnection.RequestException"><strong>RequestException</strong></a> – If HTTP/transport request fails.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.health">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">health</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.health" title="Link to this definition">¶</a></dt>
+<dd><p>Health check endpoint.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>{“status”: “ok”} if service is healthy.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>500 Internal Server Error</strong> – If health check fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.is_reachable">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">is_reachable</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ip</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">80</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#is_reachable"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.is_reachable" title="Link to this definition">¶</a></dt>
+<dd><p>Check if a given host is reachable on a specific port.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ip</strong> (<em>str</em>) – Target IP address.</p></li>
+<li><p><strong>port</strong> (<em>int</em><em>, </em><em>optional</em>) – Port to test connectivity on. Defaults to 80.</p></li>
+<li><p><strong>timeout</strong> (<em>int</em><em>, </em><em>optional</em>) – Connection timeout in seconds. Defaults to 2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if the host is reachable, False otherwise.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.onvifCameraInfo">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">onvifCameraInfo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nvr_ip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/NVRConnection.html#onvifCameraInfo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.onvifCameraInfo" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve and log ONVIF camera information from the NVR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>username</strong> (<em>str</em>) – NVR username.</p></li>
+<li><p><strong>password</strong> (<em>str</em>) – NVR password.</p></li>
+<li><p><strong>nvr_ip</strong> (<em>str</em>) – IP address of the NVR.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Logs:</dt><dd><ul class="simple">
+<li><p>Local and UTC system time.</p></li>
+<li><p>Camera device time.</p></li>
+<li><p>Manufacturer, model, firmware, serial number, and hardware ID.</p></li>
+<li><p>ONVIF device service capabilities.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>socket.error</strong> – If network connection fails.</p></li>
+<li><p><strong>Fault</strong> – If ONVIF SOAP request fails.</p></li>
+<li><p><a class="reference internal" href="#src.data_intake.data_intake.NVRConnection.RequestException" title="src.data_intake.data_intake.NVRConnection.RequestException"><strong>RequestException</strong></a> – If HTTP/transport request fails.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.set_frame_interval">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">set_frame_interval</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.data_intake.data_intake.NVRConnection.FrameIntervalRequest" title="src.data_intake.data_intake.NVRConnection.FrameIntervalRequest"><span class="pre">FrameIntervalRequest</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.set_frame_interval" title="Link to this definition">¶</a></dt>
+<dd><p>Update the frame capture interval for a specific camera channel.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>request</strong> (<a class="reference internal" href="#src.data_intake.data_intake.NVRConnection.FrameIntervalRequest" title="src.data_intake.data_intake.NVRConnection.FrameIntervalRequest"><em>FrameIntervalRequest</em></a>) – Channel and interval update request.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Response with status, updated channel, and new frame interval.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>500 Internal Server Error</strong> – If updating the interval fails.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.startup_event">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">startup_event</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.startup_event" title="Link to this definition">¶</a></dt>
+<dd><p>FastAPI startup handler that initializes camera capture threads and loads config.</p>
+<p>This startup event reads NVR credentials from environment variables, retrieves
+basic ONVIF device information, discovers available camera channels, loads
+per-channel frame-intervals from FRAME_CONFIG_FILE (falls back to <cite>g_frame_interval</cite>),
+creates manual capture <cite>threading.Event</cite> flags for each channel, and spawns a
+daemon thread that runs <cite>capture_camera</cite> for each discovered channel.</p>
+<dl class="simple">
+<dt>Globals modified:</dt><dd><p>manual_capture_flags (dict[str, threading.Event]): Mapping of channel -&gt; Event used to trigger manual captures.
+camera_frame_intervals (dict[str, int]): Mapping of channel -&gt; frames-between-captures.</p>
+</dd>
+<dt>Behavior:</dt><dd><ul class="simple">
+<li><p>Calls <cite>onvifCameraInfo</cite> and <cite>getCameraChannels</cite> (network/ONVIF IO).</p></li>
+<li><p>May create/modify FRAME_CONFIG_FILE-backed data in memory.</p></li>
+<li><p>Starts one daemon thread per channel (threads call <cite>capture_camera</cite>).</p></li>
+<li><p>Logs info, warnings, and errors to <cite>logger</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If NVR_USERNAME or NVR_PASSWORD environment variables are not set.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.NVRConnection.trigger_capture">
+<em class="property"><span class="k"><span class="pre">async</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.NVRConnection.</span></span><span class="sig-name descname"><span class="pre">trigger_capture</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">payload</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#src.data_intake.data_intake.NVRConnection.CapturePayload" title="src.data_intake.data_intake.NVRConnection.CapturePayload"><span class="pre">CapturePayload</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.NVRConnection.trigger_capture" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="src.data_intake.html">src.data_intake package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="src.data_intake.html#subpackages">Subpackages</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="src.data_stream.html">src.data_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.deep_stream.html">src.deep_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_deploy.html">src.model_deploy package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_training.html">src.model_training package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_api.html">src.pig_sorting_api package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="src.html">src package</a><ul>
+  <li><a href="src.data_intake.html">src.data_intake package</a><ul>
+  <li><a href="src.data_intake.data_intake.html">src.data_intake.data_intake package</a><ul>
+      <li>Previous: <a href="src.data_intake.data_intake.Client.html" title="previous chapter">src.data_intake.data_intake.Client module</a></li>
+      <li>Next: <a href="src.data_intake.data_intake.utils.html" title="next chapter">src.data_intake.data_intake.utils module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/modules/src.data_intake.data_intake.NVRConnection.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
