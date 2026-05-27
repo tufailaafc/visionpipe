@@ -29,3 +29,4 @@ models/YOLO/*
 visionpipe
 *__pycache__
 docs
+src/model_training/animal_weight_prediction

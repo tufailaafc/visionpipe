@@ -54,7 +54,8 @@ import httpx
 import asyncio
 import aiofiles
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+
 
 # Set to the log level desired, also may stop fastapi from suppressing the logs.
 logger = logging.getLogger()
@@ -203,6 +204,40 @@ class ChannelsRequest(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     nvr_ip: Optional[str] = None
+
+
+class SwineDataSave(BaseModel):
+    """
+    Request model for saving data produced from the swine unit.
+
+    Attributes:
+        pen (str): A string containing the idetifier for the pen.
+        rfid (str): A string containing the rfid of the pig that triggered the capture.
+        comment (Optional(str)): A string holding any comments for this capture.
+        depth_images (list(str)): A list of depth images encoded in base64.
+        depth_image_names (list(str)): A list of depth image names that correspond with depth_images.
+        thermal_images (list(str)): A list of thermal images encoded in base64.
+        thermal_image_names (list(str)): A list of thermal image names that correspond with thermal_images.
+        rgb_images (list(str)): A list of rgb images encoded in base64.
+        rgb_image_names (list(str)): A list of rgb image names that correspond with rgb_images.         
+        sensor (Optional(Dict[str, Any])): Various sensor data.
+        timestamp (datetime): A timestamp for when the capture happened. 
+            The timezone is assumed to be utc
+
+    """
+    pen: str
+    rfid: str
+    comment: Optional[str] = None
+    depth_images: List[str]
+    depth_image_names: List[str]
+    thermal_images: List[str]
+    thermal_image_names: List[str]
+    rgb_images: List[str]
+    rgb_image_names: List[str]
+    sensor: Optional[Dict[str,Any]]
+    timestamp: str
+
+
 
 
 CHAIN_PREDICTION_URL = f"{MODEL_DEPLOY_URL}/model/predict/chain"
@@ -941,3 +976,141 @@ async def channels(request: ChannelsRequest):
         logger.debug(f"Returning values inside of pig-sorting-api: {response.json()}")
         return response.json()
 
+
+@app.post("/api/v1/collector/swine_data_save")
+async def save_swine_data(request: SwineDataSave):
+    """
+    Persist images and pen sensor readings output to disk and MongoDB.
+
+    This endpoint decodes base64-encoded annotated images, saves it to
+    disk using a timestamped or user-provided name, and stores the
+    associated prediction metadata such as sensor readings and predicted weight in the MongoDB ``predictions``
+    collection.
+
+    Args:
+        request(SwineDataSave): 
+            - pen (str): A string containing the idetifier for the pen.
+            - rfid (str): A string containing the rfid of the pig that triggered the capture.
+            - comment (Optional(str)): A string holding any comments for this capture.
+            - depth_images (list(str)): A list of depth images encoded in base64.
+            - depth_image_names (list(str)): A list of depth image names that correspond with depth_images.
+            - thermal_images (list(str)): A list of thermal images encoded in base64.
+            - thermal_image_names (list(str)): A list of thermal image names that correspond with thermal_images.
+            - rgb_images (list(str)): A list of rgb images encoded in base64.
+            - rgb_image_names (list(str)): A list of rgb image names that correspond with rgb_images.         
+            - sensor (Dict[str, Any]): Various sensor data.
+            - timestamp (datetime): A timestamp for when the capture happened. The timezone is assumed to be utc
+
+    Returns:
+        dict: A dictionary containing:
+            - ``status`` (str): Operation status.
+            - ``id`` (str): MongoDB ObjectId of the saved prediction.
+            - ``path`` (str): Filesystem path to the saved annotated image.
+
+    Raises:
+        HTTPException: If image decoding, file I/O, or database insertion
+        fails.
+    """
+    try:
+        logger.debug(f"Hit swine_data_save: {request.rfid} \n {request.pen} {request.timestamp}")
+        ##################################### Decode the images and save them to the file system while keeping track of location and meta data.
+        depth_image_paths:list[str] = []
+        thermal_image_paths:list[str] = []
+        rgb_image_paths:list[str] = []
+
+        # Build folder to store the images
+        now = datetime.now(timezone.utc)
+        day_str = now.strftime("%Y-%m-%d")
+        out_dir = os.path.join("/app/images/inference/swine", day_str)
+        os.makedirs(out_dir, exist_ok=True)
+
+
+        def save_base64_image_with_name(name, bytes, out_dir):
+            #decode and save each file to the created directory
+            img_bytes = base64.b64decode(bytes)
+
+            #specify the path/name
+            file_path = os.path.join(out_dir, f"{name}")
+            # Save file
+            with open(file_path, "wb") as f:
+                f.write(img_bytes)
+            logger.info(f"Saved annotated image → {file_path}")
+            return file_path
+
+        for i in range(len(request.depth_images)):
+            file_path = save_base64_image_with_name(request.depth_image_names[i], request.depth_images[i], out_dir)
+            depth_image_paths.append(file_path)
+
+        for i in range(len(request.thermal_images)):
+            file_path = save_base64_image_with_name(request.thermal_image_names[i], request.thermal_images[i], out_dir)
+            thermal_image_paths.append(file_path)
+
+
+        for i in range(len(request.rgb_images)):
+            file_path = save_base64_image_with_name(request.rgb_image_names[i], request.rgb_images[i], out_dir)
+            rgb_image_paths.append(file_path)
+
+        #hook up to model for weight prediction
+        #dummy for some data replace with actual weight prediction
+        import random
+        predicted_weight:float = random.randint(70,120)
+
+        #transform the timestamp into a datetime object for effecient sorting and lookup
+        timestamp_object = datetime.strptime(request.timestamp,"%Y%m%d_%H%M%S_%f")
+
+
+        # Build Mongo document
+        doc = {
+            "pen": request.pen,
+            "rfid": request.rfid,
+            "comment": request.comment,
+            "depth_images": depth_image_paths,
+            "thermal_images": thermal_image_paths,
+            "rgb_images": rgb_image_paths,
+            "sensor": request.sensor,
+            "timestamp": timestamp_object,
+            "predicted_weight": predicted_weight
+        }
+
+        #insert mongo document into the database
+        result = await db["swinedata"].insert_one(doc)
+        logger.debug(f"Saved prediction metadata to MongoDB with id {result.inserted_id}")
+
+        return {"status": "ok", "id": str(result.inserted_id), "paths": f"{depth_image_paths,thermal_image_paths,rgb_image_paths}"}
+    except Exception as e:
+        logger.error(f"Error in swine_data_save: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+
+
+# Will send all records to the user
+@app.get("/api/v1/mongoData/swinedata", response_class=JSONResponse)
+async def get_swinedata():
+    """
+    Retrieve all swinedata records from the MongoDB collection.
+
+    This endpoint queries the ``swinedata`` collection in MongoDB,
+    converts the result cursor into JSON-serializable Python objects,
+    and returns all records to the client.
+
+    Returns:
+        list[dict]: A list of swinedata records retrieved from the
+        ``swinedata`` MongoDB collection.
+
+    Raises:
+        HTTPException: If an unexpected error occurs while accessing
+        the database or serializing the results.
+    """
+    try:
+        cursor = db["swinedata"].find()
+        print(f" cursor object {cursor}")
+        docs = await cursor.to_list(length=5000)
+        print(f"Docs {docs}")
+
+        clean = json.loads(bson.json_util.dumps(docs))
+        print(f"Cleaned docs {clean}")
+        return clean
+
+    except Exception as e:
+        logger.error(f"Error getting swinedata: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
