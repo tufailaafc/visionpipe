@@ -4,16 +4,14 @@ This is a project that aims to help manage, train models and annotate images.
 ## Default ports
  - mongo(database) = 27017
  - pig-sorting-api(backend) = 8001
- - LabelStudio(annotation) = 8080
- - data-intake(data ingestion) = 8301
+ - (Not used) LabelStudio(annotation) = 8080
+ - (Not used, was originally for interacting with NVRs) data-intake(data ingestion) = 8301
  - model-training = 8401
  - pig-sorting-streamlit(frontend) = 8501
  - model-deploy = 8601
- - deep-stream(app) = 8701
+ - (This and the following two will be used in the future; will be needed during inference on live images) deep-stream(app) = 8701
  - deep-stream(rtsp output WIP) = 8554
- - data-stream(WIP) = 8801
-
-
+ - (Support container for displaying the NVR data) data-stream(WIP) = 8801
 
 # What it does, break down of components
 ## data-intake (Not fully implemented)
@@ -32,6 +30,7 @@ Select Sync PC.<br>
 Then click apply.<br>
 
 ## data-processor (Not yet implemented)
+Potentially for data pre-processing, e.g., we could filter out the partially visible pigs, before sending the cropped images with the primary pig to the deep_lab_cut models.
 
 ## data-stream (WIP)
 This container will take in a rtsp stream and output an mjpeg stream for easier consumption by the streamlit frontend
@@ -49,12 +48,14 @@ TODO:
  - Add trackers for the objects detected in inference.
 
 ## deployment (Not yet implemented)
-This module will likely handle any deployment configuration when sending things to the cloud
+This module will likely handle any deployment configuration when sending things to the cloud (e.g., AWS, Google Cloud, or Microsoft Azure)..
 
 ## LabelStudio (Not fully implemented)
 We are using this as our primary annotation software. <br>
 It will take the data from our MongoDB and then output the annotations to data/label-studio-data right now. <br>
 The interface can be accessed at localhost:8080<br>
+
+We could use Digital Sreeni also.
 
 TODO: 
  - Make it export properly to the processed folder.
@@ -69,7 +70,6 @@ sudo chown 1001 /data/label-studio-data
 ```bash
 sudo chown 1001 processed
 ```
-
 
 ## model-deploy (WIP)
 Loads the models trained by the model training container and will allow the user to upload an image and perform inference with the selected model.<br>
@@ -104,12 +104,8 @@ Follow this guide for setting up gpu access https://docs.nvidia.com/datacenter/c
 
 This will allow the container access to the gpu.
 
-
-
-
-
 ## pig-sorting-api(Not fully implemented)
-This is our primairy backend for our services and will handle routing between all of the different modules. It's primary role will be to handle routing data from the frontend to the different modules. And from the different modules to the databse.
+This is our primairy backend for our services and will handle routing between all of the different modules. It's primary role will be to handle routing data from the frontend to the different modules. And from the different modules to the database.
 
 
 ## pig-sorting-streamlit(Not fully implemented)
@@ -129,17 +125,16 @@ Current pages:
  - ModelTrainView:
     - Allows the user to configure some training parameters(should be increased later), and select datasets, base model to train from, and displays some of the training data in realtime.
 
-
-
 ## workflow(Not yet implemented)
 Some form of automated testing and ci/cd.
 
-
-
 # Requirements
 An nvidia gpu, and about 16 gb of ram.
-Should be all handled by running sudo docker compose up --build
-Requires opencv-python==4.10.0.84 newer versions will cause timeout error.
+Should be all handled by running:
+```bash
+sudo docker compose up --build
+
+Requires opencv-python==4.10.0.84. Newer versions will cause timeout error.
 
 You may have issues running some containers as they have some variation of:
 ```bash
@@ -154,11 +149,6 @@ example: inside of src/pig-sorting-api<br>
 ```bash
 pip download -r requirements.txt -d ./packages
 ```
-
-
-
-
-
 # Setup
 For running Label Studio you will need to run when inside src in terminal:
 ```bash
@@ -173,7 +163,6 @@ sudo docker compose up --build
 ```
 
 May also require the user to allow legacy tokens to allow exporting with images.
-
 
 # secrets
 In order for everything to start up and work correctly you will need to create a .env file inside of src.<br>
@@ -191,7 +180,6 @@ NVR_PASSWORD=thePasswordToTheNvr
 NVR_IP=192.168.1.5
 NVR_PORT=554
 ```
-
 The other secret file goes in src/pig-sorting-api/.streamlit/secrets.toml
 And it should look like this.
 ```bash
