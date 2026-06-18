@@ -1,5 +1,4 @@
-dataset: 
-  /home/nathaniel/Documents/GitHub/visionpipe/src/deep_lab_cut/PorkAnalysis-WG-2025-12-10
+dataset: /home/engrkhan/visionpipe/src/deep_lab_cut/PorkAnalysis-WG-2025-12-10
 dataset_type: multi-animal-imgaug
 num_joints: 8
 all_joints:

@@ -24,8 +24,8 @@ COPY requirements.txt /app/
 #RUN pip download -r requirements.txt --dest=/app/packages
 
 #Use the already downloaded dependencies first.
-RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verbose 
-
+# RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verbose 
+RUN pip install -r requirements.txt --verbose
 
 
 COPY . /app/

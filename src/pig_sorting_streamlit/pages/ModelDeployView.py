@@ -1,4 +1,4 @@
-#Currently mostly depreciated. Instead use app.py
+# **CURRENTLY MOSTLY DEPRECATED**. Instead use app.py
 
 import streamlit as st
 import requests
@@ -9,7 +9,7 @@ import io
 # Backend API base URL
 API_URL = "http://model-deploy:8601"
 
-st.title("YOLO Model Inference")
+st.title("YOLO Model Inference **DEPRECATED**")
 
 # Fetch available discovered models
 @st.cache_data

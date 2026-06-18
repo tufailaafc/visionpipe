@@ -1,3 +1,5 @@
+# **PART OF THE DEPCRECATED VERSION**
+
 import PIL.Image
 from ultralytics import YOLO
 import logging
@@ -71,8 +73,49 @@ def _initialize_model(model:str="yolo11n.pt"):
 # Initialize model on import
 # _initialize_model()
 
+# The following is a version that I went to add to allow for DeepLabCut models
+# Without realizing that is is deprecated, I will leave it here for now in case we want to use it in the future.
+# - Jake Tensen 
+
 
 # adds the model to the list so that we can use it for inference
+#def load_model(model_name: str, model_path: str):
+#
+#    try:
+#
+#        # DeepLabCut model
+#        if model_path.endswith("config.yaml"):
+#
+#           models[model_name] = {
+#                "type": "DeepLabCut",
+#                "config": model_path
+#            }
+#
+#            logger.info(
+#                f"Registered DeepLabCut model {model_name}"
+#            )
+#
+#            return True
+#
+#        # YOLO model
+#        model = YOLO(model_path)
+#       models[model_name] = model
+#
+#        logger.info(
+#            f"Loaded YOLO model {model_name}"
+#        )
+#
+#        return True
+#
+#    except Exception as e:
+#
+#        logger.error(
+#            f"Failed to load model {model_name}: {e}"
+#        )
+#
+#        return False
+
+
 def load_model(model_name: str, model_path: str):
     """Load a YOLO model and register it by name.
 
@@ -92,6 +135,7 @@ def load_model(model_name: str, model_path: str):
         return False
 
 
+
 # Checks if the model is ready
 # def is_model_ready() -> bool:
 #     return _model_ready and model_yolo is not None
@@ -105,7 +149,6 @@ def is_model_ready(model_name: str) -> bool:
         bool: True if the model is loaded, False otherwise.
     """
     return model_name in models
-
 
 
 # Convert image from bytes to PIL RGB format

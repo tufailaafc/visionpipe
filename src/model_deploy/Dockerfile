@@ -15,8 +15,11 @@ COPY requirements.txt /app/
 # Download any missing packages from PyPI into /app/packages
 #RUN pip download -r requirements.txt --dest=/app/packages
 
+RUN pip install --upgrade pip setuptools wheel
+
 #Use the already downloaded dependencies first.
 RUN pip install --no-index --find-links=/app/packages -r requirements.txt --verbose 
+
 
 
 #Add DeepLabCut

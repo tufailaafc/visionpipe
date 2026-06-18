@@ -44,8 +44,8 @@ RUN pip3 install build
 
 
 # Install CUDA Python bindings
-RUN pip install --no-cache-dir nvidia-pyindex && \
-    pip install --no-cache-dir cuda-python
+#RUN pip install --no-cache-dir nvidia-pyindex
+RUN pip install --no-cache-dir cuda-python
 
 RUN /opt/nvidia/deepstream/deepstream/update_rtpmanager.sh
 

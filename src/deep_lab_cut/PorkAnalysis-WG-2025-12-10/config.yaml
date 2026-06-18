@@ -1,50 +1,9 @@
-# Project definitions (do not edit)
+SuperAnimalConversionTables: null
 Task: PorkAnalysis
-scorer: WG
-date: Dec10
-multianimalproject: false
-identity:
-
-
-# Project path (change when moving around)
-project_path: 
-  /home/nathaniel/Documents/GitHub/visionpipe/src/deep_lab_cut/PorkAnalysis-WG-2025-12-10
-
-
-# Default DeepLabCut engine to use for shuffle creation (either pytorch or tensorflow)
-engine: pytorch
-
-
-# Annotation data set configuration (and individual video cropping parameters)
-video_sets:
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Middelmatig_varken.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Middelklein_varken.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Slachtrijp_varken.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Eerder_groot_varken.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Klein_varken_1.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_15-00-00_15-28-25.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_13-36-25_15-00-00.mp4
-  : crop: 378, 1057, 239, 474
-  /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Groot_varken.mp4:
-    crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_12-00-00_12-58-30.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Klein_varken_2.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_10-18-24_11-00-00.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/2021_02_03_14-00-00_14-43-53.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/ExternDisk_ch1_20210127110000_20210127120000.mp4
-  : crop: 378, 1057, 239, 474
-  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/2021_02_03_12-00-00_12-34-04.mp4
-  : crop: 378, 1057, 239, 474
+TrainingFraction:
+- 0.95
+alphavalue: 0.7
+batch_size: 2
 bodyparts:
 - Spine1
 - Shoulder_left
@@ -54,15 +13,26 @@ bodyparts:
 - Hip_left
 - Hip_right
 - Tail_base
-
-
-# Fraction of video to start/stop when extracting frames for labeling/refinement
-start: 0
-stop: 1
+colormap: plasma
+corner2move2:
+- 50
+- 50
+cropping: false
+date: Dec10
+default_augmenter: default
+default_net_type: resnet_50
+detector_batch_size: 1
+detector_snapshotindex: -1
+dotsize: 12
+engine: pytorch
+identity: null
+iteration: 0
+move2corner: true
+multianimalproject: false
 numframes2pick: 25
-
-
-# Plotting configuration
+pcutoff: 0.1
+project_path: /home/engrkhan/visionpipe/src/deep_lab_cut/PorkAnalysis-WG-2025-12-10
+scorer: WG
 skeleton:
 - - Spine1
   - Shoulder_left
@@ -121,40 +91,39 @@ skeleton:
 - - Hip_right
   - Tail_base
 skeleton_color: red
-pcutoff: 0.1
-dotsize: 12
-alphavalue: 0.7
-colormap: plasma
-
-
-# Training,Evaluation and Analysis configuration
-TrainingFraction:
-- 0.95
-iteration: 0
-default_net_type: resnet_50
-default_augmenter: default
 snapshotindex: -1
-detector_snapshotindex: -1
-# batch_size: 8
-batch_size: 2
-detector_batch_size: 1
-
-
-# Cropping Parameters (for analysis and outlier frame detection)
-cropping: false
-#if cropping is true for analysis, then set the values here:
+start: 0
+stop: 1
+video_sets:
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_10-18-24_11-00-00.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_12-00-00_12-58-30.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_13-36-25_15-00-00.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/20210127_15-00-00_15-28-25.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/2021_02_03_12-00-00_12-34-04.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/2021_02_03_14-00-00_14-43-53.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Eerder_groot_varken.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/ExternDisk_ch1_20210127110000_20210127120000.mp4
+  : crop: 378, 1057, 239, 474
+  /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Groot_varken.mp4:
+    crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Klein_varken_1.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Klein_varken_2.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Middelklein_varken.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Middelmatig_varken.mp4
+  : crop: 378, 1057, 239, 474
+  ? /home/nathaniel/Documents/GitHub/visionpipe/data/raw/deep_lab_cut/osfstorage-archive/DLC_tracking/videos/Slachtrijp_varken.mp4
+  : crop: 378, 1057, 239, 474
 x1: 0
 x2: 640
 y1: 277
 y2: 624
-
-
-# Refinement configuration (parameters from annotation dataset configuration also relevant in this stage)
-corner2move2:
-- 50
-- 50
-move2corner: true
-
-
-# Conversion tables to fine-tune SuperAnimal weights
-SuperAnimalConversionTables:

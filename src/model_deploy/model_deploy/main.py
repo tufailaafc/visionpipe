@@ -1,3 +1,5 @@
+# **PART OF THE DEPRECATED VERSION**
+
 """
 YOLO Inference API using FastAPI.
 
@@ -389,7 +391,39 @@ def discover_available_models():
     models.update(app_model.discover_deepLabCut_models())
     return {"models": models}
 
+# The following is a version I had added to allow for DeepLabCut models without
+# realizing this is part of the deprecated version. I will leave it here for now, but it may be removed in the future.
+# - Jake Tensen
 
+#@app.post("/model/load/discovered")
+#def load_discovered_model(req: ModelKeyRequest):
+#
+#    all_discovered = app_model.discover_models()
+#    all_discovered.update(
+#        app_model.discover_deepLabCut_models()
+#    )
+#
+#    if req.model_key not in all_discovered:
+#        raise HTTPException(
+#            status_code=404,
+#            detail=f"Model '{req.model_key}' not found."
+#        )
+#
+#    success = app_model.load_model(
+#       req.model_key,
+#        all_discovered[req.model_key]
+#    )
+#
+#    if success:
+#        return {
+#            "status": "loaded",
+#            "model": req.model_key
+#        }
+#
+#    raise HTTPException(
+#        status_code=500,
+#        detail=f"Failed to load model: {req.model_key}"
+#    )
 
 @app.post("/model/load/discovered")
 def load_discovered_model(req: ModelKeyRequest):

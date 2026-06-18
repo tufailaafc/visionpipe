@@ -41,7 +41,7 @@ services:
     build:
       context: ./pig_sorting_streamlit
       dockerfile: Dockerfile
-    # network_mode: "host"  # Use host networking for local development
+      # network_mode: "host"  # Use host networking for local development
     depends_on:
       - pig-sorting-api  # Ensures the API is up before Streamlit starts
     ports:
