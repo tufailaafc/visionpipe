@@ -28,4 +28,4 @@ models/YOLO/*
 !models/YOLO/.gitkeep
 visionpipe
 *__pycache__
-docs
+

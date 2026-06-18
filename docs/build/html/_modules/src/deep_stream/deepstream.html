@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>src.deep_stream.deepstream &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.deep_stream.deepstream</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;../&quot;</span><span class="p">)</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">gi</span>
+<span class="c1">#import configparser</span>
+<span class="n">gi</span><span class="o">.</span><span class="n">require_version</span><span class="p">(</span><span class="s1">&#39;Gst&#39;</span><span class="p">,</span> <span class="s1">&#39;1.0&#39;</span><span class="p">)</span>
+<span class="n">gi</span><span class="o">.</span><span class="n">require_version</span><span class="p">(</span><span class="s1">&#39;GstRtspServer&#39;</span><span class="p">,</span> <span class="s1">&#39;1.0&#39;</span><span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gi.repository</span><span class="w"> </span><span class="kn">import</span> <span class="n">Gst</span><span class="p">,</span> <span class="n">GLib</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gi.repository</span><span class="w"> </span><span class="kn">import</span> <span class="n">GstRtspServer</span>
+<span class="c1"># from ctypes import *</span>
+<span class="c1">#import time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">math</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="c1"># import pyds</span>
+<span class="c1">#import platform</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span>
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span>
+    <span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span>
+    <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+
+
+<span class="c1">#EOS = End Of Stream</span>
+<span class="c1">#PGIE = primary generative inference engine</span>
+
+
+<span class="c1"># This will add an rtsp source to the source bin which will allow it to be played</span>
+<div class="viewcode-block" id="add_rtsp_source">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.add_rtsp_source">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_rtsp_source</span><span class="p">(</span><span class="n">rtsp_url</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">source_index</span>
+    <span class="c1"># This will help to ensure no memory or other errors by having too many streams</span>
+    <span class="k">if</span> <span class="n">source_index</span> <span class="o">&gt;=</span> <span class="n">MAX_NUM_SOURCES</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">&quot;Max number of sources reached.&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adding source #</span><span class="si">{</span><span class="n">source_index</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">rtsp_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">source_bin</span> <span class="o">=</span> <span class="n">create_uridecode_bin</span><span class="p">(</span><span class="n">source_index</span><span class="p">,</span> <span class="n">rtsp_url</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">source_bin</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to create source bin for </span><span class="si">{</span><span class="n">rtsp_url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">source_bin</span><span class="p">)</span>
+    <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_index</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_bin</span>
+
+    <span class="c1"># Set to PLAYING</span>
+    <span class="n">source_bin</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">PLAYING</span><span class="p">)</span>
+
+    <span class="n">g_source_enabled</span><span class="p">[</span><span class="n">source_index</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="c1"># Keep track of how many sources we have.</span>
+    <span class="n">g_num_sources</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="n">source_index</span> <span class="o">+=</span> <span class="mi">1</span></div>
+
+
+
+<span class="c1"># Configuration constants</span>
+<span class="c1">#STREAM_CONTAINER=&quot;pig-sorting-streamlit&quot; </span>
+<span class="n">MAX_DISPLAY_LEN</span><span class="o">=</span><span class="mi">64</span>
+<span class="c1"># Our classes for detection</span>
+<span class="n">PGIE_CLASS_ID_STRAWBERRY_IMMATURE</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">PGIE_CLASS_ID_STRAWBERRY_RIPE</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">PGIE_CLASS_ID_STRAWBERRY_ROTTEN</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="c1"># This will set the output dimensions and will scale it up or down to fit.</span>
+<span class="n">MUXER_OUTPUT_WIDTH</span> <span class="o">=</span> <span class="mi">1920</span>
+<span class="n">MUXER_OUTPUT_HEIGHT</span> <span class="o">=</span> <span class="mi">1080</span>
+<span class="n">MUXER_BATCH_TIMEOUT_USEC</span> <span class="o">=</span> <span class="mi">33000</span>
+
+<span class="c1"># This will set the dimensions when we have to output more than one stream</span>
+<span class="n">TILED_OUTPUT_WIDTH</span><span class="o">=</span><span class="mi">1280</span>
+<span class="n">TILED_OUTPUT_HEIGHT</span><span class="o">=</span><span class="mi">720</span>
+
+<span class="c1"># This is the ID of the host gpu</span>
+<span class="n">GPU_ID</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="n">MAX_NUM_SOURCES</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="c1">#SINK_ELEMENT = &quot;nveglglessink&quot;</span>
+
+<span class="c1">#This points to the configuration file for the primary inference(model)</span>
+<span class="n">PGIE_CONFIG_FILE</span> <span class="o">=</span> <span class="s2">&quot;deepstream/config_infer_primary_yolo11.txt&quot;</span>
+
+<span class="n">CONFIG_GPU_ID</span> <span class="o">=</span> <span class="s2">&quot;gpu-id&quot;</span>
+<span class="n">CONFIG_GROUP_TRACKER</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+<span class="c1"># Global variables</span>
+<span class="c1">#Contains the number of sources currently</span>
+<span class="n">g_num_sources</span> <span class="o">=</span> <span class="mi">0</span> 
+<span class="c1">#Contains the id for all of the sources</span>
+<span class="n">g_source_id_list</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="n">MAX_NUM_SOURCES</span>
+<span class="c1">#Contains a list that will store which streams have finished</span>
+<span class="n">g_eos_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="n">MAX_NUM_SOURCES</span>
+<span class="c1">#Contains a list of all of the sources that we have enabled</span>
+<span class="n">g_source_enabled</span> <span class="o">=</span> <span class="p">[</span><span class="kc">False</span><span class="p">]</span> <span class="o">*</span> <span class="n">MAX_NUM_SOURCES</span>
+<span class="n">g_source_bin_list</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">MAX_NUM_SOURCES</span>
+
+
+<span class="c1">#The list of classes that are model is configured to detect</span>
+<span class="n">pgie_classes_str</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;immature strawberry&#39;</span><span class="p">,</span> <span class="s1">&#39;ripe strawberry&#39;</span><span class="p">,</span> <span class="s1">&#39;rotten&#39;</span><span class="p">]</span>
+
+<span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+<span class="n">source_index</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="n">loop</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">pipeline</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">streammux</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">sink</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">pgie</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">nvvideoconvert</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">nvosd</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">tiler</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="n">tracker</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1">##############################</span>
+<span class="c1"># Debug functions</span>
+<span class="c1"># Will print out the details for the rtsp stream like dimensions and memory type, also stops it from breaking, have found out why yet.</span>
+<span class="n">print_flag</span><span class="o">=</span> <span class="kc">False</span>
+<div class="viewcode-block" id="new_pad_probe">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.new_pad_probe">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">new_pad_probe</span><span class="p">(</span><span class="n">pad</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">user_data</span><span class="p">):</span>
+    <span class="n">caps</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_current_caps</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">print_flag</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">caps</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;CAPS DEBUG:&quot;</span><span class="p">,</span> <span class="n">caps</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;No caps found on pad&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadProbeReturn</span><span class="o">.</span><span class="n">OK</span></div>
+
+
+<span class="n">infer_frame_count</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="pgie_frame_probe">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.pgie_frame_probe">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pgie_frame_probe</span><span class="p">(</span><span class="n">pad</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">user_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Probe that prints a message every frame arriving at the inference element.&quot;&quot;&quot;</span>
+    <span class="n">pad_name</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">pad_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">infer_frame_count</span><span class="p">:</span>
+        <span class="n">infer_frame_count</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">infer_frame_count</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">N</span> <span class="o">=</span> <span class="mi">50</span>
+    <span class="k">if</span> <span class="n">infer_frame_count</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span> <span class="o">%</span> <span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">buf</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get_buffer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">buf</span><span class="p">:</span>
+            <span class="n">pts</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">pts</span>
+            <span class="n">dts</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">dts</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">get_size</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[PGIE DEBUG] Frame </span><span class="si">{</span><span class="n">infer_frame_count</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span><span class="si">}</span><span class="s2"> at pad </span><span class="si">{</span><span class="n">pad_name</span><span class="si">}</span><span class="s2">, PTS=</span><span class="si">{</span><span class="n">pts</span><span class="si">}</span><span class="s2">, DTS=</span><span class="si">{</span><span class="n">dts</span><span class="si">}</span><span class="s2">, Size=</span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadProbeReturn</span><span class="o">.</span><span class="n">OK</span></div>
+
+
+
+<span class="c1"># def pgie_detection_probe(pad, info, u_data):</span>
+<span class="c1">#     buffer = info.get_buffer()</span>
+<span class="c1">#     if not buffer:</span>
+<span class="c1">#         return Gst.PadProbeReturn.OK</span>
+
+<span class="c1">#     # Retrieve batch metadata from the buffer</span>
+<span class="c1">#     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(buffer))</span>
+<span class="c1">#     l_frame = batch_meta.frame_meta_list</span>
+
+<span class="c1">#     while l_frame is not None:</span>
+<span class="c1">#         frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)</span>
+<span class="c1">#         obj_meta_list = frame_meta.obj_meta_list</span>
+<span class="c1">#         while obj_meta_list is not None:</span>
+<span class="c1">#             obj_meta = pyds.NvDsObjectMeta.cast(obj_meta_list.data)</span>
+<span class="c1">#             print(f&quot;Detected object class id: {obj_meta.class_id}&quot;)</span>
+<span class="c1">#             obj_meta_list = obj_meta_list.next</span>
+<span class="c1">#         l_frame = l_frame.next</span>
+
+<span class="c1">#     return Gst.PadProbeReturn.OK</span>
+
+
+<span class="n">frame_counter</span> <span class="o">=</span> <span class="p">{}</span>
+
+<div class="viewcode-block" id="pad_debug_probe_limited">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.pad_debug_probe_limited">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">pad_debug_probe_limited</span><span class="p">(</span><span class="n">pad</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">user_data</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prints pad debug info every N frames.&quot;&quot;&quot;</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="mi">80</span>
+    <span class="n">pad_name</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">pad_name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">frame_counter</span><span class="p">:</span>
+        <span class="n">frame_counter</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="n">frame_counter</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="n">buf</span> <span class="o">=</span> <span class="n">info</span><span class="o">.</span><span class="n">get_buffer</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">buf</span> <span class="ow">and</span> <span class="n">frame_counter</span><span class="p">[</span><span class="n">pad_name</span><span class="p">]</span> <span class="o">%</span> <span class="n">N</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">pts</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">pts</span>
+            <span class="n">dts</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">dts</span>
+            <span class="n">size</span> <span class="o">=</span> <span class="n">buf</span><span class="o">.</span><span class="n">get_size</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[PAD DEBUG] Pad: </span><span class="si">{</span><span class="n">pad_name</span><span class="si">}</span><span class="s2">, PTS: </span><span class="si">{</span><span class="n">pts</span><span class="si">}</span><span class="s2">, DTS: </span><span class="si">{</span><span class="n">dts</span><span class="si">}</span><span class="s2">, Size: </span><span class="si">{</span><span class="n">size</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">caps</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_current_caps</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">caps</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[PAD DEBUG] Caps: </span><span class="si">{</span><span class="n">caps</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pad debug failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadProbeReturn</span><span class="o">.</span><span class="n">OK</span></div>
+
+
+
+<span class="c1"># Lets us know which elements are created and how they are linked</span>
+<div class="viewcode-block" id="print_pipeline_status">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.print_pipeline_status">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">print_pipeline_status</span><span class="p">(</span><span class="n">pipeline</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Prints each element and its pads, and checks linking status.&quot;&quot;&quot;</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Pipeline Elements and Pads:&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">iterate_elements</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Element: </span><span class="si">{</span><span class="n">elem</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">elem</span><span class="o">.</span><span class="n">get_factory</span><span class="p">()</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">pad</span> <span class="ow">in</span> <span class="n">elem</span><span class="o">.</span><span class="n">iterate_pads</span><span class="p">():</span>
+            <span class="n">pad_name</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+            <span class="n">pad_caps</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_current_caps</span><span class="p">()</span>
+            <span class="n">peer_pad</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_peer</span><span class="p">()</span>
+            <span class="n">peer_name</span> <span class="o">=</span> <span class="n">peer_pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="k">if</span> <span class="n">peer_pad</span> <span class="k">else</span> <span class="s2">&quot;None&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pad: </span><span class="si">{</span><span class="n">pad_name</span><span class="si">}</span><span class="s2">, Peer: </span><span class="si">{</span><span class="n">peer_name</span><span class="si">}</span><span class="s2">, Caps: </span><span class="si">{</span><span class="n">pad_caps</span><span class="o">.</span><span class="n">to_string</span><span class="p">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">pad_caps</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;None&#39;</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Checking link status:&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">elem</span> <span class="ow">in</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">iterate_elements</span><span class="p">():</span>
+        <span class="k">for</span> <span class="n">pad</span> <span class="ow">in</span> <span class="n">elem</span><span class="o">.</span><span class="n">iterate_pads</span><span class="p">():</span>
+            <span class="n">peer_pad</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_peer</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">peer_pad</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">elem</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">peer_pad</span><span class="o">.</span><span class="n">get_parent_element</span><span class="p">()</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">peer_pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">elem</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">pad</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span><span class="si">}</span><span class="s2"> -&gt; Not linked&quot;</span><span class="p">)</span></div>
+
+
+<span class="c1">##############################################</span>
+
+
+
+
+
+<div class="viewcode-block" id="decodebin_child_added">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.decodebin_child_added">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">decodebin_child_added</span><span class="p">(</span><span class="n">child_proxy</span><span class="p">,</span> <span class="n">Object</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user_data</span><span class="p">):</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Decodebin child added:&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;decodebin&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">Object</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;child-added&quot;</span><span class="p">,</span> <span class="n">decodebin_child_added</span><span class="p">,</span> <span class="n">user_data</span><span class="p">)</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">name</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;nvv4l2decoder&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">Object</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;drop-frame-interval&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">Object</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;num-extra-surfaces&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Attach probe to decoder&#39;s src pad for debugging rtsp input stream, also stops it from breaking for some reason.</span>
+        <span class="n">decoder_src_pad</span> <span class="o">=</span> <span class="n">Object</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">decoder_src_pad</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Attaching pad probe to decoder&#39;s src pad&quot;</span><span class="p">)</span>
+            <span class="n">decoder_src_pad</span><span class="o">.</span><span class="n">add_probe</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">PadProbeType</span><span class="o">.</span><span class="n">BUFFER</span><span class="p">,</span> <span class="n">new_pad_probe</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
+
+
+            
+
+<div class="viewcode-block" id="cb_newpad">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.cb_newpad">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">cb_newpad</span><span class="p">(</span><span class="n">decodebin</span><span class="p">,</span> <span class="n">pad</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">streammux</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;In cb_newpad&quot;</span><span class="p">)</span>
+    <span class="n">caps</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">get_current_caps</span><span class="p">()</span>
+    <span class="n">gststruct</span> <span class="o">=</span> <span class="n">caps</span><span class="o">.</span><span class="n">get_structure</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">gstname</span> <span class="o">=</span> <span class="n">gststruct</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;gstname=&quot;</span><span class="p">,</span> <span class="n">gstname</span><span class="p">)</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">gstname</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;video&quot;</span><span class="p">)</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="n">data</span>
+        <span class="n">pad_name</span> <span class="o">=</span> <span class="s2">&quot;sink_</span><span class="si">%u</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">source_id</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Requesting pad: </span><span class="si">{</span><span class="n">pad_name</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="n">sinkpad</span> <span class="o">=</span> <span class="n">streammux</span><span class="o">.</span><span class="n">request_pad_simple</span><span class="p">(</span><span class="n">pad_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">sinkpad</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Unable to create sink pad bin </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">return</span>
+            
+        <span class="n">link_ret</span> <span class="o">=</span> <span class="n">pad</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">sinkpad</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">link_ret</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadLinkReturn</span><span class="o">.</span><span class="n">OK</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Decodebin linked to pipeline&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to link decodebin to pipeline: </span><span class="si">{</span><span class="n">link_ret</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="c1">#This will create a bin that contains our sources</span>
+<div class="viewcode-block" id="create_uridecode_bin">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.create_uridecode_bin">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">create_uridecode_bin</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">g_source_id_list</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating uridecodebin for [</span><span class="si">%s</span><span class="s2">]&quot;</span> <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
+
+    <span class="n">g_source_id_list</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">index</span>
+    <span class="n">bin_name</span> <span class="o">=</span> <span class="s2">&quot;source-bin-</span><span class="si">%02d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">index</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">bin_name</span><span class="p">)</span>
+
+
+    <span class="nb">bin</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;uridecodebin&quot;</span><span class="p">,</span> <span class="n">bin_name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">bin</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Unable to create uri decode bin </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="nb">bin</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+    <span class="nb">bin</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;pad-added&quot;</span><span class="p">,</span> <span class="n">cb_newpad</span><span class="p">,</span> <span class="n">g_source_id_list</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+    <span class="nb">bin</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;child-added&quot;</span><span class="p">,</span> <span class="n">decodebin_child_added</span><span class="p">,</span> <span class="n">g_source_id_list</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+
+    <span class="n">g_source_enabled</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="nb">bin</span></div>
+
+
+
+<span class="c1"># Properly release a source stream</span>
+<div class="viewcode-block" id="stop_release_source">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.stop_release_source">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">stop_release_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">g_num_sources</span>
+    <span class="k">global</span> <span class="n">g_source_bin_list</span>
+    <span class="k">global</span> <span class="n">streammux</span>
+    <span class="k">global</span> <span class="n">pipeline</span>
+
+    <span class="n">state_return</span> <span class="o">=</span> <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">NULL</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">SUCCESS</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="nb">print</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE SUCCESS&quot;</span><span class="p">))</span>
+        <span class="n">pad_name</span> <span class="o">=</span> <span class="s2">&quot;sink_</span><span class="si">%u</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">source_id</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">pad_name</span><span class="p">)</span>
+
+
+        <span class="n">sinkpad</span> <span class="o">=</span> <span class="n">streammux</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="n">pad_name</span><span class="p">)</span>
+        <span class="n">sinkpad</span><span class="o">.</span><span class="n">send_event</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">Event</span><span class="o">.</span><span class="n">new_flush_stop</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">streammux</span><span class="o">.</span><span class="n">release_request_pad</span><span class="p">(</span><span class="n">sinkpad</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE SUCCESS&quot;</span><span class="p">)</span>
+
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">])</span>
+        <span class="n">source_id</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="n">g_num_sources</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="k">elif</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">FAILURE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE FAILURE&quot;</span><span class="p">)</span>
+
+
+    <span class="k">elif</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">ASYNC</span><span class="p">:</span>
+        <span class="n">state__return</span> <span class="o">=</span> <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">CLOCK_TIME_NONE</span><span class="p">)</span>
+        <span class="n">pad_name</span> <span class="o">=</span> <span class="s2">&quot;sink_</span><span class="si">%u</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">source_id</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">pad_name</span><span class="p">)</span>
+        <span class="n">sinkpad</span> <span class="o">=</span> <span class="n">streammux</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="n">pad_name</span><span class="p">)</span>
+        <span class="n">sinkpad</span><span class="o">.</span><span class="n">send_event</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">Event</span><span class="o">.</span><span class="n">new_flush_stop</span><span class="p">(</span><span class="kc">False</span><span class="p">))</span>
+        <span class="n">streammux</span><span class="o">.</span><span class="n">release_request_pad</span><span class="p">(</span><span class="n">sinkpad</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE ASYNC&quot;</span><span class="p">)</span>
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">])</span>
+        <span class="n">source_id</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="n">g_num_sources</span> <span class="o">-=</span> <span class="mi">1</span></div>
+
+
+<div class="viewcode-block" id="delete_sources">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.delete_sources">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">delete_sources</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">loop</span>
+    <span class="k">global</span> <span class="n">g_num_sources</span>
+    <span class="k">global</span> <span class="n">g_eos_list</span>
+    <span class="k">global</span> <span class="n">g_source_enabled</span>
+
+    <span class="c1"># Delete sources that have reached end of stream</span>
+    <span class="k">for</span> <span class="n">source_id</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">MAX_NUM_SOURCES</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">g_eos_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="ow">and</span> <span class="n">g_source_enabled</span><span class="p">[</span><span class="n">source_id</span><span class="p">]):</span>
+            <span class="n">g_source_enabled</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="n">stop_release_source</span><span class="p">(</span><span class="n">source_id</span><span class="p">)</span>
+
+    <span class="c1"># If there are no more sources then quit</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">g_num_sources</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="n">loop</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;All sources stopped quitting&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<span class="c1"># Properly handles adding sources</span>
+<div class="viewcode-block" id="add_sources">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.add_sources">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">add_sources</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">g_num_sources</span>
+    <span class="k">global</span> <span class="n">g_source_enabled</span>
+    <span class="k">global</span> <span class="n">g_source_bin_list</span>
+    <span class="k">global</span> <span class="n">pipeline</span>
+
+    <span class="n">source_id</span> <span class="o">=</span> <span class="n">g_num_sources</span>
+
+    <span class="c1"># Update our list so that we know this source is enabled</span>
+    <span class="n">g_source_enabled</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Calling Start </span><span class="si">%d</span><span class="s2"> &quot;</span> <span class="o">%</span> <span class="n">source_id</span><span class="p">)</span>
+
+    <span class="c1"># create a bin that contains our source</span>
+    <span class="n">source_bin</span> <span class="o">=</span> <span class="n">create_uridecode_bin</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">source_bin</span><span class="p">):</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;Failed to create bin. Exiting.&quot;</span><span class="p">)</span>
+        <span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Add our bin to th global variable to manage</span>
+    <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_bin</span>
+    <span class="c1"># Add the bin to the actual pipeline</span>
+    <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">source_bin</span><span class="p">)</span>
+
+    <span class="c1"># Enable our source so that it can start streaming</span>
+    <span class="n">state_return</span> <span class="o">=</span> <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">PLAYING</span><span class="p">)</span>
+
+
+    <span class="c1"># Evaluate if it was successful</span>
+    <span class="k">if</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">SUCCESS</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE SUCCESS&quot;</span><span class="p">)</span>
+        <span class="n">source_id</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">FAILURE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE FAILURE&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">ASYNC</span><span class="p">:</span>
+        <span class="n">state_return</span> <span class="o">=</span> <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">source_id</span><span class="p">]</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">CLOCK_TIME_NONE</span><span class="p">)</span>
+        <span class="n">source_id</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">elif</span> <span class="n">state_return</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">NO_PREROLL</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;STATE CHANGE NO PREROLL&quot;</span><span class="p">)</span>
+
+    <span class="n">g_num_sources</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="c1">#To-Do add some proper logic to prevent adding to many sources</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">g_num_sources</span> <span class="o">==</span> <span class="n">MAX_NUM_SOURCES</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Over max number of sources </span><span class="si">{</span><span class="n">g_num_sources</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+
+<span class="c1"># This will handle messages and make descions based off of that.</span>
+<div class="viewcode-block" id="bus_call">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.bus_call">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bus_call</span><span class="p">(</span><span class="n">bus</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">loop</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">g_eos_list</span>
+
+    <span class="n">t</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">type</span>
+
+    <span class="c1"># If we recieve and end of stream we will quit</span>
+    <span class="k">if</span> <span class="n">t</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">MessageType</span><span class="o">.</span><span class="n">EOS</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;End-of-stream</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">loop</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">t</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">MessageType</span><span class="o">.</span><span class="n">WARNING</span><span class="p">:</span>
+        <span class="n">err</span><span class="p">,</span> <span class="n">debug</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">parse_warning</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Warning: </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">debug</span><span class="p">))</span>
+
+    <span class="c1"># If we recieve a error we will also quit</span>
+    <span class="k">elif</span> <span class="n">t</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">MessageType</span><span class="o">.</span><span class="n">ERROR</span><span class="p">:</span>
+        <span class="n">err</span><span class="p">,</span> <span class="n">debug</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">parse_error</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Error: </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">: </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">err</span><span class="p">,</span> <span class="n">debug</span><span class="p">))</span>
+        <span class="n">loop</span><span class="o">.</span><span class="n">quit</span><span class="p">()</span>
+
+    <span class="k">elif</span> <span class="n">t</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">MessageType</span><span class="o">.</span><span class="n">ELEMENT</span><span class="p">:</span>
+        <span class="n">struct</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="n">get_structure</span><span class="p">()</span>
+        <span class="c1"># We add the stream that ended to our list to handle stream ending gracefully</span>
+        <span class="k">if</span> <span class="n">struct</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">struct</span><span class="o">.</span><span class="n">has_name</span><span class="p">(</span><span class="s2">&quot;stream-eos&quot;</span><span class="p">):</span>
+            <span class="n">parsed</span><span class="p">,</span> <span class="n">stream_id</span> <span class="o">=</span> <span class="n">struct</span><span class="o">.</span><span class="n">get_uint</span><span class="p">(</span><span class="s2">&quot;stream-id&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">parsed</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Got EOS from stream </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stream_id</span><span class="p">)</span>
+                <span class="n">g_eos_list</span><span class="p">[</span><span class="n">stream_id</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="n">struct</span><span class="o">.</span><span class="n">has_name</span><span class="p">(</span><span class="s2">&quot;perf&quot;</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;PERF EVENT: &quot;</span><span class="p">,</span> <span class="n">struct</span><span class="o">.</span><span class="n">to_string</span><span class="p">())</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+<div class="viewcode-block" id="main">
+<a class="viewcode-back" href="../../../modules/src.deep_stream.deepstream.html#src.deep_stream.deepstream.main">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">source_index</span>
+    <span class="k">global</span> <span class="n">g_num_sources</span>
+    <span class="k">global</span> <span class="n">g_source_bin_list</span>
+    <span class="k">global</span> <span class="n">uri</span>
+    <span class="k">global</span> <span class="n">loop</span>
+    <span class="k">global</span> <span class="n">pipeline</span>
+    <span class="k">global</span> <span class="n">streammux</span>
+    <span class="k">global</span> <span class="n">sink</span>
+    <span class="k">global</span> <span class="n">pgie</span>
+    <span class="k">global</span> <span class="n">nvvideoconvert</span>
+    <span class="k">global</span> <span class="n">nvosd</span>
+    <span class="k">global</span> <span class="n">tiler</span>
+    <span class="k">global</span> <span class="n">tracker</span>
+
+    <span class="n">source_index</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="c1"># Check input arguments</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;usage: </span><span class="si">%s</span><span class="s2"> &lt;uri1&gt; </span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">num_sources</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">args</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="c1"># Standard GStreamer initialization</span>
+    <span class="n">Gst</span><span class="o">.</span><span class="n">init</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+    <span class="c1"># Set logging levels</span>
+    <span class="n">Gst</span><span class="o">.</span><span class="n">debug_set_active</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">Gst</span><span class="o">.</span><span class="n">debug_set_default_threshold</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="c1"># Create Pipeline elementis_live</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating Pipeline &quot;</span><span class="p">)</span>
+    <span class="n">pipeline</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span>
+    <span class="n">is_live</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pipeline</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create pipeline&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create nvstreammux to form batches from one or more sources</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Unable to create pipeline&quot;</span><span class="p">)</span>
+    <span class="n">streammux</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvstreammux&quot;</span><span class="p">,</span> <span class="s2">&quot;Stream-muxer&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">streammux</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create NvStreamMux&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;batched-push-timeout&quot;</span><span class="p">,</span> <span class="mi">40000</span><span class="p">)</span>
+    <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;batch-size&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;gpu_id&quot;</span><span class="p">,</span> <span class="n">GPU_ID</span><span class="p">)</span>
+    <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;live-source&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="n">MUXER_OUTPUT_WIDTH</span><span class="p">)</span>
+    <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="n">MUXER_OUTPUT_HEIGHT</span><span class="p">)</span>
+
+    <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">streammux</span><span class="p">)</span>
+
+    <span class="c1"># add sources from command line</span>
+    <span class="n">uri</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_sources</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating source_bin &quot;</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+        <span class="n">uri_name</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">uri_name</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;rtsp://&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">is_live</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="n">source_bin</span> <span class="o">=</span> <span class="n">create_uridecode_bin</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">uri_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">source_bin</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to create source bin, Exiting.&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">source_bin</span>
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">source_bin</span><span class="p">)</span>
+
+    <span class="n">g_num_sources</span> <span class="o">=</span> <span class="n">num_sources</span>
+
+    <span class="c1"># Create primary inference engine, this will determine if there are any instances of the class in the incoming source</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating Pgie&quot;</span><span class="p">)</span>
+    <span class="n">pgie</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvinfer&quot;</span><span class="p">,</span> <span class="s2">&quot;primary-inference&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pgie</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create Pgie&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1">########################################</span>
+    <span class="c1"># pgie_sink_pad = pgie.get_static_pad(&quot;src&quot;)  # or &quot;sink&quot;, see below</span>
+    <span class="c1"># if not pgie_sink_pad:</span>
+    <span class="c1">#     sys.stderr.write(&quot;Unable to get src pad of PGIE\n&quot;)</span>
+    <span class="c1"># else:</span>
+    <span class="c1">#     pgie_sink_pad.add_probe(Gst.PadProbeType.BUFFER, pgie_detection_probe, None)</span>
+    <span class="c1">########################################</span>
+
+
+    <span class="c1"># Create tracker, this will track the object as it moves in the video stream</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating nvtracker&quot;</span><span class="p">)</span>
+    <span class="n">tracker</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvtracker&quot;</span><span class="p">,</span> <span class="s2">&quot;tracker&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tracker</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create nvtracker&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create tiler, this will configure the 2d tile for new sources being added</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating tiler&quot;</span><span class="p">)</span>
+    <span class="n">tiler</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvmultistreamtiler&quot;</span><span class="p">,</span> <span class="s2">&quot;nvtiler&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tiler</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create tiler&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create nvvideoconvert, will do scaling  cropping and video color format conversion</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating nvvidconv&quot;</span><span class="p">)</span>
+    <span class="n">nvvideoconvert</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvvideoconvert&quot;</span><span class="p">,</span> <span class="s2">&quot;convertor&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nvvideoconvert</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create nvvidconv&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create nvdsosd, this will handle drawing bounding boxes around the region of intrest</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating nvosd&quot;</span><span class="p">)</span>
+    <span class="n">nvosd</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvdsosd&quot;</span><span class="p">,</span> <span class="s2">&quot;onscreendisplay&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nvosd</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create nvosd&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create tee for splitting output, so we can save to file and display the output</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating tee&quot;</span><span class="p">)</span>
+    <span class="n">tee</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;tee&quot;</span><span class="p">,</span> <span class="s2">&quot;tee&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tee</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create tee </span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create queues</span>
+    <span class="n">queue_display</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;queue&quot;</span><span class="p">,</span> <span class="s2">&quot;queue-display&quot;</span><span class="p">)</span>
+    <span class="n">queue_file</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;queue&quot;</span><span class="p">,</span> <span class="s2">&quot;queue-file&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">queue_display</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">queue_file</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create queues&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Create display sink (fakesink for now)</span>
+    <span class="n">display_sink</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;fakesink&quot;</span><span class="p">,</span> <span class="s2">&quot;display-sink&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">display_sink</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create display sink&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">display_sink</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;sync&quot;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+
+    <span class="c1">################################ File output elements########################################</span>
+    <span class="c1">#Handles scaling cropping etc</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating nvvidconv2&quot;</span><span class="p">)</span>
+    <span class="n">nvvideoconvert2</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;nvvideoconvert&quot;</span><span class="p">,</span> <span class="s2">&quot;convertor2&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nvvideoconvert2</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create nvvidconv2&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+
+    <span class="c1">#Ensures that the stream is in the correct format</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating capsfilter&quot;</span><span class="p">)</span>
+    <span class="n">capsfilter</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;capsfilter&quot;</span><span class="p">,</span> <span class="s2">&quot;capsfilter&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">capsfilter</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create capsfilter&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># Convert NVMM to system memory for encoder compatibility</span>
+    <span class="n">caps</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">Caps</span><span class="o">.</span><span class="n">from_string</span><span class="p">(</span><span class="s2">&quot;video/x-raw, format=I420&quot;</span><span class="p">)</span>
+    <span class="n">capsfilter</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;caps&quot;</span><span class="p">,</span> <span class="n">caps</span><span class="p">)</span>
+
+    <span class="c1"># Encodes it into a format that can be saved into a file</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating encoder (x264enc)&quot;</span><span class="p">)</span>
+    <span class="n">encoder</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;x264enc&quot;</span><span class="p">,</span> <span class="s2">&quot;encoder&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">encoder</span><span class="p">:</span>
+        <span class="c1"># Fallback to software encoder if x264enc not available</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;x264enc not available, trying avenc_h264&quot;</span><span class="p">)</span>
+        <span class="n">encoder</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;avenc_h264&quot;</span><span class="p">,</span> <span class="s2">&quot;encoder&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">encoder</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create any H.264 encoder&quot;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c1"># Set encoder properties for better performance</span>
+    <span class="k">if</span> <span class="n">encoder</span><span class="o">.</span><span class="n">get_factory</span><span class="p">()</span><span class="o">.</span><span class="n">get_name</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;x264enc&quot;</span><span class="p">:</span>
+        <span class="n">encoder</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;bitrate&quot;</span><span class="p">,</span> <span class="mi">2000</span><span class="p">)</span>
+        <span class="n">encoder</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;tune&quot;</span><span class="p">,</span> <span class="s2">&quot;zerolatency&quot;</span><span class="p">)</span>
+        <span class="n">encoder</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;speed-preset&quot;</span><span class="p">,</span> <span class="s2">&quot;ultrafast&quot;</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">encoder</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;bitrate&quot;</span><span class="p">,</span> <span class="mi">2000000</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating code parser (h264parse)&quot;</span><span class="p">)</span>
+    <span class="n">codeparser</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;h264parse&quot;</span><span class="p">,</span> <span class="s2">&quot;h264-parse&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">codeparser</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create h264parse&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Creating container&quot;</span><span class="p">)</span>
+    <span class="n">container</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;qtmux&quot;</span><span class="p">,</span> <span class="s2">&quot;qtmux&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">container</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create container&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Creating file sink&quot;</span><span class="p">)</span>
+    <span class="n">file_sink</span> <span class="o">=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">ElementFactory</span><span class="o">.</span><span class="n">make</span><span class="p">(</span><span class="s2">&quot;filesink&quot;</span><span class="p">,</span> <span class="s2">&quot;filesink&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">file_sink</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to create file sink&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="c1"># This will set where we output our file to, and what we call it.</span>
+    <span class="n">timestamp</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y:%m:</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+    <span class="n">file_sink</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;location&quot;</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;/app/videos/deepstream_</span><span class="si">{</span><span class="n">timestamp</span><span class="si">}</span><span class="s2">_out.mp4&quot;</span><span class="p">)</span>
+    <span class="n">file_sink</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;sync&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">file_sink</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;async&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">is_live</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;At least one of the sources is live.&quot;</span><span class="p">)</span>
+        <span class="n">streammux</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;live-source&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Set pgie properties</span>
+    <span class="n">pgie</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;config-file-path&quot;</span><span class="p">,</span> <span class="n">PGIE_CONFIG_FILE</span><span class="p">)</span>
+    <span class="n">pgie_batch_size</span> <span class="o">=</span> <span class="n">pgie</span><span class="o">.</span><span class="n">get_property</span><span class="p">(</span><span class="s2">&quot;batch-size&quot;</span><span class="p">)</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">pgie_batch_size</span> <span class="o">&lt;</span> <span class="n">MAX_NUM_SOURCES</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;WARNING: Overriding infer-config batch-size&quot;</span><span class="p">,</span> <span class="n">pgie_batch_size</span><span class="p">,</span> <span class="s2">&quot; with number of sources &quot;</span><span class="p">,</span> <span class="n">num_sources</span><span class="p">)</span>
+    <span class="n">pgie</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;batch-size&quot;</span><span class="p">,</span> <span class="n">MAX_NUM_SOURCES</span><span class="p">)</span>
+    <span class="n">pgie</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;gpu_id&quot;</span><span class="p">,</span> <span class="n">GPU_ID</span><span class="p">)</span>
+
+    <span class="c1"># Set tiler properties</span>
+    <span class="n">tiler_rows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">num_sources</span><span class="p">))</span>
+    <span class="n">tiler_columns</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="mf">1.0</span><span class="o">*</span><span class="n">num_sources</span><span class="p">)</span><span class="o">/</span><span class="n">tiler_rows</span><span class="p">))</span>
+    <span class="n">tiler</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;rows&quot;</span><span class="p">,</span> <span class="n">tiler_rows</span><span class="p">)</span>
+    <span class="n">tiler</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;columns&quot;</span><span class="p">,</span> <span class="n">tiler_columns</span><span class="p">)</span>
+    <span class="n">tiler</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;width&quot;</span><span class="p">,</span> <span class="n">TILED_OUTPUT_WIDTH</span><span class="p">)</span>
+    <span class="n">tiler</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;height&quot;</span><span class="p">,</span> <span class="n">TILED_OUTPUT_HEIGHT</span><span class="p">)</span>
+
+    <span class="c1"># Set gpu IDs</span>
+    <span class="n">tiler</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;gpu_id&quot;</span><span class="p">,</span> <span class="n">GPU_ID</span><span class="p">)</span>
+    <span class="n">nvvideoconvert</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;gpu_id&quot;</span><span class="p">,</span> <span class="n">GPU_ID</span><span class="p">)</span>
+    <span class="n">nvosd</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;gpu_id&quot;</span><span class="p">,</span> <span class="n">GPU_ID</span><span class="p">)</span>
+    <span class="n">nvvideoconvert2</span><span class="o">.</span><span class="n">set_property</span><span class="p">(</span><span class="s2">&quot;gpu_id&quot;</span><span class="p">,</span> <span class="n">GPU_ID</span><span class="p">)</span>
+    
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Adding elements to Pipeline&quot;</span><span class="p">)</span>
+    <span class="n">elements</span> <span class="o">=</span> <span class="p">[</span><span class="n">pgie</span><span class="p">,</span> <span class="n">tiler</span><span class="p">,</span> <span class="n">nvvideoconvert</span><span class="p">,</span> <span class="n">nvosd</span><span class="p">,</span> <span class="n">tee</span><span class="p">,</span> <span class="n">queue_display</span><span class="p">,</span> <span class="n">queue_file</span><span class="p">,</span>
+                <span class="n">display_sink</span><span class="p">,</span> <span class="n">nvvideoconvert2</span><span class="p">,</span> <span class="n">capsfilter</span><span class="p">,</span> <span class="n">encoder</span><span class="p">,</span> <span class="n">codeparser</span><span class="p">,</span> <span class="n">container</span><span class="p">,</span> <span class="n">file_sink</span><span class="p">]</span>
+    
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+        <span class="n">pipeline</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">element</span><span class="p">)</span>
+
+    <span class="c1"># Link main pipeline, this determines how the order in which the information flows</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Linking elements in the pipeline&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">streammux</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">pgie</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link streammux -&gt; pgie</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">pgie</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">tiler</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link pgie -&gt; tiler</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tiler</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">nvvideoconvert</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link tiler -&gt; nvvideoconvert&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nvvideoconvert</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">nvosd</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link nvvideoconvert -&gt; nvosd&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nvosd</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">tee</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link nvosd -&gt; tee&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Branch 1: Display</span>
+    <span class="n">tee_src_pad_display</span> <span class="o">=</span> <span class="n">tee</span><span class="o">.</span><span class="n">get_request_pad</span><span class="p">(</span><span class="s2">&quot;src_</span><span class="si">%u</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">queue_display_sink_pad</span> <span class="o">=</span> <span class="n">queue_display</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="s2">&quot;sink&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tee_src_pad_display</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">queue_display_sink_pad</span><span class="p">)</span> <span class="o">!=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadLinkReturn</span><span class="o">.</span><span class="n">OK</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link tee -&gt; queue_display&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">queue_display</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">display_sink</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link queue_display -&gt; display_sink&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Branch 2: File output</span>
+    <span class="n">tee_src_pad_file</span> <span class="o">=</span> <span class="n">tee</span><span class="o">.</span><span class="n">get_request_pad</span><span class="p">(</span><span class="s2">&quot;src_</span><span class="si">%u</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">queue_file_sink_pad</span> <span class="o">=</span> <span class="n">queue_file</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="s2">&quot;sink&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tee_src_pad_file</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">queue_file_sink_pad</span><span class="p">)</span> <span class="o">!=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadLinkReturn</span><span class="o">.</span><span class="n">OK</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link tee -&gt; queue_file&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">queue_file</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">nvvideoconvert2</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link queue_file -&gt; nvvideoconvert2&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">nvvideoconvert2</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">capsfilter</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link nvvideoconvert2 -&gt; capsfilter&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">capsfilter</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">encoder</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link capsfilter -&gt; encoder&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">encoder</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">codeparser</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link encoder -&gt; codeparser&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Link to container using request pad</span>
+    <span class="n">sinkpad_video</span> <span class="o">=</span> <span class="n">container</span><span class="o">.</span><span class="n">get_request_pad</span><span class="p">(</span><span class="s2">&quot;video_0&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sinkpad_video</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to get video sink pad from qtmux&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="n">srcpad_parser</span> <span class="o">=</span> <span class="n">codeparser</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="s2">&quot;src&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">srcpad_parser</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to get src pad from parser&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="n">srcpad_parser</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">sinkpad_video</span><span class="p">)</span> <span class="o">!=</span> <span class="n">Gst</span><span class="o">.</span><span class="n">PadLinkReturn</span><span class="o">.</span><span class="n">OK</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link parser -&gt; qtmux&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">container</span><span class="o">.</span><span class="n">link</span><span class="p">(</span><span class="n">file_sink</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to link qtmux -&gt; filesink&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+
+
+
+    <span class="c1"># Create event loop and bus</span>
+    <span class="c1">#Maind logic loop for pipeline</span>
+    <span class="n">loop</span> <span class="o">=</span> <span class="n">GLib</span><span class="o">.</span><span class="n">MainLoop</span><span class="p">()</span>
+
+    <span class="c1"># Where we manage messages from pipeline</span>
+    <span class="n">bus</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">get_bus</span><span class="p">()</span>
+    <span class="n">bus</span><span class="o">.</span><span class="n">add_signal_watch</span><span class="p">()</span>
+    <span class="n">bus</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">,</span> <span class="n">bus_call</span><span class="p">,</span> <span class="n">loop</span><span class="p">)</span>
+
+    <span class="n">osdsinkpad</span> <span class="o">=</span> <span class="n">nvosd</span><span class="o">.</span><span class="n">get_static_pad</span><span class="p">(</span><span class="s2">&quot;sink&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">osdsinkpad</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to get the sinkpad of nvosd&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Set source bins to PLAYING state</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Setting source bins to PLAYING&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_sources</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">i</span><span class="p">]:</span>
+            <span class="n">ret</span> <span class="o">=</span> <span class="n">g_source_bin_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">PLAYING</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Source bin </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> state change: </span><span class="si">{</span><span class="n">ret</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Set pipeline to PAUSED first</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Setting pipeline to PAUSED&quot;</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">PAUSED</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">FAILURE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to set pipeline to PAUSED&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Wait for PAUSED state</span>
+    <span class="n">ret</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">pending</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="n">Gst</span><span class="o">.</span><span class="n">SECOND</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">FAILURE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to get pipeline state&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Pipeline PAUSED state: </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">, pending: </span><span class="si">{</span><span class="n">pending</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Sync new elements with parent</span>
+    <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="p">[</span><span class="n">tee</span><span class="p">,</span> <span class="n">queue_display</span><span class="p">,</span> <span class="n">queue_file</span><span class="p">,</span> <span class="n">display_sink</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">element</span><span class="p">:</span>
+            <span class="n">element</span><span class="o">.</span><span class="n">sync_state_with_parent</span><span class="p">()</span>
+
+    <span class="c1"># Now set to PLAYING</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Setting pipeline to PLAYING&quot;</span><span class="p">)</span>
+    <span class="n">ret</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">PLAYING</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ret</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">StateChangeReturn</span><span class="o">.</span><span class="n">FAILURE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Unable to set pipeline to PLAYING&quot;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Wait for PLAYING state</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Waiting for state change to PLAYING&quot;</span><span class="p">)</span>
+    <span class="n">ret</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">pending</span> <span class="o">=</span> <span class="n">pipeline</span><span class="o">.</span><span class="n">get_state</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="n">Gst</span><span class="o">.</span><span class="n">SECOND</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Final pipeline state: </span><span class="si">{</span><span class="n">state</span><span class="si">}</span><span class="s2">, pending: </span><span class="si">{</span><span class="n">pending</span><span class="si">}</span><span class="s2">, status: </span><span class="si">{</span><span class="n">ret</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">state</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">PLAYING</span> <span class="ow">and</span> <span class="n">pending</span> <span class="o">==</span> <span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">VOID_PENDING</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Pipeline is successfully PLAYING&quot;</span><span class="p">)</span>
+        <span class="c1"># Display the data sources</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Now playing...&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">source</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">i</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">):</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="s2">&quot;: &quot;</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span>
+        <span class="n">print_pipeline_status</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Pipeline failed to reach PLAYING state&quot;</span><span class="p">)</span>
+        <span class="n">print_pipeline_status</span><span class="p">(</span><span class="n">pipeline</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">loop</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="c1"># Cleanup</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Exiting app&quot;</span><span class="p">)</span>
+    <span class="n">pipeline</span><span class="o">.</span><span class="n">set_state</span><span class="p">(</span><span class="n">Gst</span><span class="o">.</span><span class="n">State</span><span class="o">.</span><span class="n">NULL</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules/src.html">src package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

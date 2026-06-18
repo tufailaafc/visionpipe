@@ -120,3 +120,65 @@ if st.button("Fetch Images"):
 
 
 
+
+API = "http://pig-sorting-api:8001"
+
+st.title("🐖 Pig Weight Time Series")
+
+# ---------------------------
+# Load all Mongo metadata via API
+# ---------------------------
+@st.cache_data(ttl=60)
+def load_data():
+    res = requests.get(f"{API}/api/v1/mongoData/swinedata")
+    st.write(res.json())
+    return pd.DataFrame(res.json())
+
+df = load_data()
+st.dataframe(df)
+
+if df.empty:
+    st.warning("No data available")
+    st.stop()
+
+# ---------------------------
+# Clean timestamps
+# ---------------------------
+df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
+df = df.dropna(subset=["timestamp"])
+
+# ---------------------------
+# RFID selector
+# ---------------------------
+#rfid_list = sorted(df["rfid"].dropna().unique())
+st.write("COLUMNS:", df.columns)
+st.write("DTYPE:", df["rfid"].dtype)
+st.write("HEAD:", df["rfid"].head(10))
+st.write("NON-NULL COUNT:", df["rfid"].notna().sum())
+rfid_list = df["rfid"]
+st.write(rfid_list)
+selected_rfid = st.selectbox("Select RFID", rfid_list)
+
+filtered = df[df["rfid"] == selected_rfid].sort_values("timestamp")
+
+# ---------------------------
+# Time series plot
+# ---------------------------
+st.subheader(f"📈 Weight Over Time — RFID {selected_rfid}")
+
+st.line_chart(
+    filtered.set_index("timestamp")["predicted_weight"]
+)
+
+# ---------------------------
+# Table view
+# ---------------------------
+st.subheader("📋 Raw Data")
+st.dataframe(
+    filtered[["timestamp", "pen", "predicted_weight", "comment"]]
+)
+
+
+
+
+

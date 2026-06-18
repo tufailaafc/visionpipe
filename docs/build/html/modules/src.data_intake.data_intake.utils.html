@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src.data_intake.data_intake.utils module &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="src.data_stream package" href="src.data_stream.html" />
+    <link rel="prev" title="src.data_intake.data_intake.NVRConnection module" href="src.data_intake.data_intake.NVRConnection.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.data_intake.data_intake.utils">
+<span id="src-data-intake-data-intake-utils-module"></span><h1>src.data_intake.data_intake.utils module<a class="headerlink" href="#module-src.data_intake.data_intake.utils" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.utils.getMetaDataDir">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.utils.</span></span><span class="sig-name descname"><span class="pre">getMetaDataDir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">root_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/utils.html#getMetaDataDir"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.utils.getMetaDataDir" title="Link to this definition">¶</a></dt>
+<dd><p>Recursively extract and print EXIF metadata from images in a directory.</p>
+<p>Walks through the given directory and all subdirectories, calling
+<cite>tagReader</cite> on each file found.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>root_path</strong> (<em>str</em>) – Path to the root directory containing image files.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>This function prints results to the console.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>FileNotFoundError</strong> – If the directory does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.utils.tagReader">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.utils.</span></span><span class="sig-name descname"><span class="pre">tagReader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/utils.html#tagReader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.utils.tagReader" title="Link to this definition">¶</a></dt>
+<dd><p>Read and print EXIF metadata from a single image.</p>
+<p>Opens the specified image file and extracts EXIF metadata tags,
+printing each tag and its value to the console.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em>) – Path to the image file.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>This function prints results to the console.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>None</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the image file does not exist.</p></li>
+<li><p><strong>PIL.UnidentifiedImageError</strong> – If the file is not a valid image.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.utils.writeExifTag">
+<span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.utils.</span></span><span class="sig-name descname"><span class="pre">writeExifTag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">author</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">serialNumber</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dateTime</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">userComment</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">description</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/src/data_intake/data_intake/utils.html#writeExifTag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#src.data_intake.data_intake.utils.writeExifTag" title="Link to this definition">¶</a></dt>
+<dd><p>Write or update EXIF metadata tags in an image.</p>
+<p>Updates the EXIF tags for the specified image with provided metadata
+values such as author, serial number, timestamp, user comments, and
+description. Existing tags are preserved unless overwritten.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_path</strong> (<em>str</em>) – Path to the image file.</p></li>
+<li><p><strong>author</strong> (<em>str</em><em>, </em><em>optional</em>) – Camera or photographer name. Defaults to “”.</p></li>
+<li><p><strong>serialNumber</strong> (<em>str</em><em>, </em><em>optional</em>) – Camera serial number. Defaults to “”.</p></li>
+<li><p><strong>dateTime</strong> (<em>str</em><em>, </em><em>optional</em>) – Timestamp of the image in format
+“YYYY:MM:DD HH:MM:SS”. Defaults to “”.</p></li>
+<li><p><strong>userComment</strong> (<em>str</em><em>, </em><em>optional</em>) – Arbitrary user comment. Defaults to “”.</p></li>
+<li><p><strong>description</strong> (<em>str</em><em>, </em><em>optional</em>) – Description of the image content. Defaults to “”.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>FileNotFoundError</strong> – If the image file does not exist.</p></li>
+<li><p><strong>ValueError</strong> – If the provided EXIF fields are invalid.</p></li>
+<li><p><strong>Exception</strong> – For unexpected errors during EXIF writing.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">writeExifTag</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="s2">&quot;photo.jpg&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">author</span><span class="o">=</span><span class="s2">&quot;John Doe&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">serialNumber</span><span class="o">=</span><span class="s2">&quot;12345XYZ&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">dateTime</span><span class="o">=</span><span class="s2">&quot;2025:09:23 10:30:00&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">userComment</span><span class="o">=</span><span class="s2">&quot;Inspection photo&quot;</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Front view of the device&quot;</span>
+<span class="gp">... </span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="src.data_intake.html">src.data_intake package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="src.data_intake.html#subpackages">Subpackages</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="src.data_stream.html">src.data_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.deep_stream.html">src.deep_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_deploy.html">src.model_deploy package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_training.html">src.model_training package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_api.html">src.pig_sorting_api package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="src.html">src package</a><ul>
+  <li><a href="src.data_intake.html">src.data_intake package</a><ul>
+  <li><a href="src.data_intake.data_intake.html">src.data_intake.data_intake package</a><ul>
+      <li>Previous: <a href="src.data_intake.data_intake.NVRConnection.html" title="previous chapter">src.data_intake.data_intake.NVRConnection module</a></li>
+      <li>Next: <a href="src.data_stream.html" title="next chapter">src.data_stream package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/modules/src.data_intake.data_intake.utils.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>src.data_intake.data_intake.NVRConnection &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for src.data_intake.data_intake.NVRConnection</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">datetime</span>
+<span class="c1">#from datetime import datetime</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">onvif</span><span class="w"> </span><span class="kn">import</span> <span class="n">ONVIFCamera</span>
+
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">socket</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zeep.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">Fault</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">zeep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Client</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">requests.exceptions</span><span class="w"> </span><span class="kn">import</span> <span class="n">RequestException</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pydantic</span><span class="w"> </span><span class="kn">import</span> <span class="n">BaseModel</span>
+
+
+<span class="c1"># Custom class that contains EXIF manipulation functions</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.</span><span class="w"> </span><span class="kn">import</span> <span class="n">utils</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.Client</span><span class="w"> </span><span class="kn">import</span> <span class="n">image_table</span>
+
+
+<span class="c1">#Import fast api to make the container able to communicate for scheduling etc.</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">File</span><span class="p">,</span> <span class="n">UploadFile</span><span class="p">,</span> <span class="n">Query</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span><span class="p">,</span> <span class="n">StreamingResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">Body</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">List</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">threading</span><span class="w"> </span><span class="kn">import</span> <span class="n">Lock</span>
+
+<span class="n">camera_comments</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">comment_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+
+
+
+<span class="c1">#Try to connect to the NVR</span>
+<span class="n">MAX_RETRIES</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">RETRY_DELAY</span> <span class="o">=</span> <span class="mi">5</span>  <span class="c1"># seconds</span>
+
+<span class="n">manual_capture_flags</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="c1">#take_picture = False #A flag that we can switch to take a picture if we get an input from the website etc</span>
+<span class="c1"># This is a fall back</span>
+<span class="n">g_frame_interval</span> <span class="o">=</span> <span class="mi">960</span>
+
+
+
+<span class="n">FRAME_CONFIG_FILE</span> <span class="o">=</span> <span class="s2">&quot;config.json&quot;</span>
+<span class="c1"># Stores frame interval per channel: { &quot;1&quot;: 960, &quot;2&quot;: 120, ... }</span>
+<span class="n">camera_frame_intervals</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1"># for updating how often the cameras take pictures interval </span>
+<span class="c1"># is how many frames between taking pictures and channel is the camera.</span>
+<div class="viewcode-block" id="FrameIntervalRequest">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.FrameIntervalRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FrameIntervalRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Request model for updating camera frame intervals.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        channel (int): The target camera which is tied to port number.</span>
+<span class="sd">        interval (int): Number of frames to skip between captures for this channel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">channel</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">interval</span><span class="p">:</span> <span class="nb">int</span></div>
+
+
+<div class="viewcode-block" id="ChannelsRequest">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.ChannelsRequest">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ChannelsRequest</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Request model for retrieving active and connected camera ids.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        username (str): The username to log into the NVR.</span>
+<span class="sd">        password (str): The password to log into the NVR.</span>
+<span class="sd">        nvr_ip (str): The ip to log into the NVR.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">nvr_ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+
+
+<div class="viewcode-block" id="ImageMetadata">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.ImageMetadata">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageMetadata</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Model representing metadata for a captured image.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        image_path (str): Path to the saved image file.</span>
+<span class="sd">        author (str): Name or identifier of the user/system that captured the image.</span>
+<span class="sd">        serial_number (str, optional): Serial number of the camera.</span>
+<span class="sd">        date_time (datetime.datetime): Timestamp of when the image was captured.</span>
+<span class="sd">        user_comment (str, optional): User-provided comment or note.</span>
+<span class="sd">        description (str, optional): Additional description of the image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">image_path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">author</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">serial_number</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">date_time</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span>
+    <span class="n">user_comment</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="ImageMetadata.Config">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.ImageMetadata.Config">[docs]</a>
+    <span class="k">class</span><span class="w"> </span><span class="nc">Config</span><span class="p">:</span>
+        <span class="n">arbitrary_types_allowed</span> <span class="o">=</span> <span class="kc">True</span></div>
+</div>
+
+
+<span class="c1"># For requests to take a picture</span>
+<div class="viewcode-block" id="CapturePayload">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.CapturePayload">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CapturePayload</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Payload model for manual image capture requests.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        channels (List[int]): List of camera channels to trigger captures/pictures on.</span>
+<span class="sd">        comment (str, optional): This will be able to hold a comment for all cameras in channels.</span>
+<span class="sd">        comments (dict[int, str], optional): comments for individual cameras mapped by camera channels.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">channels</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span>
+    <span class="n">comment</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">comments</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<span class="c1"># A fast api app to allow this module to talk to the other modules</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">()</span>
+
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span>
+    <span class="n">CORSMiddleware</span><span class="p">,</span>
+    <span class="n">allow_origins</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">allow_credentials</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">allow_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+    <span class="n">allow_headers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="is_reachable">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.is_reachable">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">is_reachable</span><span class="p">(</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">80</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a given host is reachable on a specific port.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        ip (str): Target IP address.</span>
+<span class="sd">        port (int, optional): Port to test connectivity on. Defaults to 80.</span>
+<span class="sd">        timeout (int, optional): Connection timeout in seconds. Defaults to 2.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if the host is reachable, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">socket</span><span class="o">.</span><span class="n">create_connection</span><span class="p">((</span><span class="n">ip</span><span class="p">,</span> <span class="n">port</span><span class="p">),</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">error</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<span class="c1"># Using a logger as opposed to print to make better for scaling and multithreading.</span>
+<span class="c1"># Set to the log level desired, also may stop fastapi from suppressing the logs.</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s2">&quot;nvr&quot;</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+
+<span class="c1"># Ensure logs go to stdout</span>
+<span class="k">if</span> <span class="ow">not</span> <span class="n">logger</span><span class="o">.</span><span class="n">handlers</span><span class="p">:</span>
+    <span class="n">handler</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">StreamHandler</span><span class="p">()</span>
+    <span class="n">handler</span><span class="o">.</span><span class="n">setFormatter</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">Formatter</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> - </span><span class="si">%(levelname)s</span><span class="s2"> - </span><span class="si">%(message)s</span><span class="s2">&quot;</span><span class="p">))</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">addHandler</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+
+<span class="n">logger</span><span class="o">.</span><span class="n">propagate</span> <span class="o">=</span> <span class="kc">False</span>
+
+
+
+<span class="c1">#logs data about the nvr and will return a set of numbers that correlate to the connected cameras</span>
+<div class="viewcode-block" id="onvifCameraInfo">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.onvifCameraInfo">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">onvifCameraInfo</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Retrieve and log ONVIF camera information from the NVR.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        username (str): NVR username.</span>
+<span class="sd">        password (str): NVR password.</span>
+<span class="sd">        nvr_ip (str): IP address of the NVR.</span>
+
+<span class="sd">    Logs:</span>
+<span class="sd">        - Local and UTC system time.</span>
+<span class="sd">        - Camera device time.</span>
+<span class="sd">        - Manufacturer, model, firmware, serial number, and hardware ID.</span>
+<span class="sd">        - ONVIF device service capabilities.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        socket.error: If network connection fails.</span>
+<span class="sd">        Fault: If ONVIF SOAP request fails.</span>
+<span class="sd">        RequestException: If HTTP/transport request fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># The container time to see if it is wrong and causing Wsse error</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Container Local time:     </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">ctime</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">utc_now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+    <span class="n">local_now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">astimezone</span><span class="p">()</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;UTC time:       </span><span class="si">{</span><span class="n">utc_now</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Local datetime: </span><span class="si">{</span><span class="n">local_now</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+
+
+    <span class="n">retries</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="n">retries</span> <span class="o">&lt;</span> <span class="n">MAX_RETRIES</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">is_reachable</span><span class="p">(</span><span class="n">nvr_ip</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="mi">80</span><span class="p">):</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Cannot reach </span><span class="si">{</span><span class="n">nvr_ip</span><span class="si">}</span><span class="s2">. Retrying in </span><span class="si">{</span><span class="n">RETRY_DELAY</span><span class="si">}</span><span class="s2">s...&quot;</span><span class="p">)</span>
+            <span class="n">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">RETRY_DELAY</span><span class="p">)</span>
+            <span class="k">continue</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Connecting to NVR ONVIF cameras at </span><span class="si">{</span><span class="n">nvr_ip</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+            <span class="c1"># Creating management services to get details from the NVR.</span>
+            <span class="n">camera</span> <span class="o">=</span> <span class="n">ONVIFCamera</span><span class="p">(</span><span class="n">nvr_ip</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+            <span class="n">device_service</span> <span class="o">=</span> <span class="n">camera</span><span class="o">.</span><span class="n">create_devicemgmt_service</span><span class="p">()</span>
+
+            <span class="n">device_time</span> <span class="o">=</span> <span class="n">device_service</span><span class="o">.</span><span class="n">GetSystemDateAndTime</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera Time: </span><span class="si">{</span><span class="n">device_time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+
+            <span class="n">device_info</span> <span class="o">=</span> <span class="n">device_service</span><span class="o">.</span><span class="n">GetDeviceInformation</span><span class="p">()</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Manufacturer: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_info</span><span class="o">.</span><span class="n">Manufacturer</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Model: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_info</span><span class="o">.</span><span class="n">Model</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Firmware: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_info</span><span class="o">.</span><span class="n">FirmwareVersion</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Serial Number: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_info</span><span class="o">.</span><span class="n">SerialNumber</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Hardware ID: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_info</span><span class="o">.</span><span class="n">HardwareId</span><span class="p">)</span>
+
+
+            <span class="n">device_outputs</span> <span class="o">=</span> <span class="n">device_service</span><span class="o">.</span><span class="n">GetCapabilities</span><span class="p">({</span><span class="s1">&#39;Category&#39;</span><span class="p">:</span> <span class="s1">&#39;All&#39;</span><span class="p">})</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Device service capabilities: </span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">device_outputs</span><span class="p">)</span>
+
+
+            <span class="k">return</span>  <span class="c1"># success</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">Fault</span><span class="p">,</span> <span class="n">RequestException</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error connecting to ONVIF device: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">retries</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">RETRY_DELAY</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">&quot;Failed to retrieve camera info after multiple attempts.&quot;</span><span class="p">)</span></div>
+
+
+
+
+<div class="viewcode-block" id="getCameraChannels">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.getCameraChannels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">getCameraChannels</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover available camera channels from the NVR.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        username (str): NVR username.</span>
+<span class="sd">        password (str): NVR password.</span>
+<span class="sd">        nvr_ip (str): IP address of the NVR.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        set[str]: A set of detected camera channel ie [&quot;3&quot;,&quot;7&quot;,&quot;9&quot;].</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        socket.error: If network connection fails.</span>
+<span class="sd">        Fault: If ONVIF SOAP request fails.</span>
+<span class="sd">        RequestException: If HTTP/transport request fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Connecting to NVR ONVIF cameras at </span><span class="si">{</span><span class="n">nvr_ip</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+        <span class="n">camera</span> <span class="o">=</span> <span class="n">ONVIFCamera</span><span class="p">(</span><span class="n">nvr_ip</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+        <span class="n">media_service</span> <span class="o">=</span> <span class="n">camera</span><span class="o">.</span><span class="n">create_media_service</span><span class="p">()</span>
+
+            
+        <span class="n">profiles</span> <span class="o">=</span> <span class="n">media_service</span><span class="o">.</span><span class="n">GetProfiles</span><span class="p">()</span>
+
+        <span class="n">camera_channels</span><span class="o">=</span><span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">profile</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">profiles</span><span class="p">):</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">profile</span><span class="o">.</span><span class="n">Name</span><span class="p">)</span>
+
+            <span class="c1"># Example Name &quot;MediaProfile_Channel1_MainStream&quot;</span>
+            <span class="c1"># get the number component from the returned string to help dynamically initialize connection with the cameras</span>
+            <span class="n">name_components</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;_&quot;</span><span class="p">)</span>
+            <span class="c1"># grab the center part</span>
+            <span class="n">channel_component</span> <span class="o">=</span> <span class="n">name_components</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># grab the number</span>
+            <span class="n">channel_number</span> <span class="o">=</span> <span class="n">channel_component</span><span class="p">[</span><span class="mi">7</span><span class="p">:]</span>
+            <span class="n">camera_channels</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">channel_number</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Detected channels </span><span class="si">{</span><span class="n">channel_number</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Set of camera channels </span><span class="si">{</span><span class="n">camera_channels</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">camera_channels</span>
+
+    <span class="k">except</span> <span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">Fault</span><span class="p">,</span> <span class="n">RequestException</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error connecting to ONVIF device: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1">#retries += 1</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">RETRY_DELAY</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Create a global stop event</span>
+<span class="n">stop_event</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="capture_camera">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.capture_camera">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">capture_camera</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span> <span class="n">subtype</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Continuously capture frames from a camera channel, saving images and video.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        username (str): NVR username.</span>
+<span class="sd">        password (str): NVR password.</span>
+<span class="sd">        nvr_ip (str): IP address of the NVR.</span>
+<span class="sd">        channel (int): Camera channel to capture from.</span>
+<span class="sd">        subtype (int, optional): Stream subtype (e.g., 0 = main stream, 1 = substream).</span>
+<span class="sd">            Defaults to 0.</span>
+
+<span class="sd">    Behavior:</span>
+<span class="sd">        - Saves continuous video stream to `.avi` file.</span>
+<span class="sd">        - Saves periodic still frames based on channel frame interval.</span>
+<span class="sd">        - Supports manual capture triggers via `manual_capture_flags`.</span>
+<span class="sd">        - Stops gracefully when `stop_event` is set.</span>
+
+<span class="sd">    Logs:</span>
+<span class="sd">        - Frame dimensions, FPS, capture status, saved image paths.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># This is so that we can tell one camera to take a picture.</span>
+    <span class="k">global</span> <span class="n">manual_capture_flags</span>
+    <span class="k">global</span> <span class="n">g_frame_interval</span>
+    <span class="k">global</span> <span class="n">camera_frame_intervals</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;capture_camera started with channel=</span><span class="si">{</span><span class="nb">repr</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span><span class="si">}</span><span class="s2"> (type=</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;manual_capture_flags keys=</span><span class="si">{</span><span class="nb">list</span><span class="p">(</span><span class="n">manual_capture_flags</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># These are the ouptut directories for each channel/camera</span>
+    <span class="n">video_output_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;videos/</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="si">}</span><span class="s2">_output_video_channel_</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">.avi&quot;</span>
+    <span class="n">frame_output_dir</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;images/extracted_frames/</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="si">}</span><span class="s2">_extracted_frames_channel_</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="c1">#frame_interval = 960 # This is how often we take a picture, if set to 60 on a 30 fps camera, it will be </span>
+    <span class="c1"># about every two seconds.</span>
+
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">frame_output_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="s2">&quot;videos&quot;</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+    <span class="c1"># connecting to the camera through the rtsp url</span>
+    <span class="n">rtsp_url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;rtsp://</span><span class="si">{</span><span class="n">username</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">password</span><span class="si">}</span><span class="s2">@</span><span class="si">{</span><span class="n">nvr_ip</span><span class="si">}</span><span class="s2">:554/cam/realmonitor?channel=</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">&amp;subtype=</span><span class="si">{</span><span class="n">subtype</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="n">rtsp_url</span><span class="p">)</span>
+
+    <span class="c1"># getting the information from the captured stream, to configure the video writer</span>
+    <span class="n">frame_width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+    <span class="n">frame_height</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="mi">4</span><span class="p">))</span>
+    <span class="n">fps</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cv2</span><span class="o">.</span><span class="n">CAP_PROP_FPS</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">fps</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">fps</span> <span class="o">=</span> <span class="mi">15</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Channel: </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">,  Frame Width: </span><span class="si">{</span><span class="n">frame_width</span><span class="si">}</span><span class="s2">, Frame Height: </span><span class="si">{</span><span class="n">frame_height</span><span class="si">}</span><span class="s2">, Fps: </span><span class="si">{</span><span class="n">fps</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    
+
+    <span class="c1"># creating the writer with the correct fps and size</span>
+    <span class="n">fourcc</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoWriter_fourcc</span><span class="p">(</span><span class="o">*</span><span class="s1">&#39;XVID&#39;</span><span class="p">)</span>
+    <span class="n">video_writer</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoWriter</span><span class="p">(</span><span class="n">video_output_path</span><span class="p">,</span> <span class="n">fourcc</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="p">(</span><span class="n">frame_width</span><span class="p">,</span> <span class="n">frame_height</span><span class="p">))</span>
+
+
+    <span class="c1"># used for counting how often we take pictures.</span>
+    <span class="n">frame_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+    <span class="c1"># verify that the stream is open</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">cap</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to open RTSP stream for channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;RTSP stream opened for channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+
+
+
+
+    <span class="c1"># main capture loop where we take the images</span>
+    <span class="k">while</span> <span class="n">cap</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
+
+        <span class="k">if</span> <span class="n">stop_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Stop signal received. Stopping capture on channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+                    <span class="k">break</span>
+
+        <span class="n">ret</span><span class="p">,</span> <span class="n">frame</span> <span class="o">=</span> <span class="n">cap</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ret</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Frame read failed for channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">. Attempting to reconnect...&quot;</span><span class="p">)</span>
+            <span class="n">cap</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>  <span class="c1"># wait before reconnecting</span>
+            <span class="n">cap</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoCapture</span><span class="p">(</span><span class="n">rtsp_url</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">cap</span><span class="o">.</span><span class="n">isOpened</span><span class="p">():</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reconnection failed. Exiting channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">)</span>
+                <span class="k">break</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># Save video frame</span>
+        <span class="n">video_writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+
+        <span class="c1"># Save every nth frame, is camera specific</span>
+        <span class="n">frame_interval</span> <span class="o">=</span> <span class="n">camera_frame_intervals</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">channel</span><span class="p">),</span> <span class="n">g_frame_interval</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">frame_count</span> <span class="o">%</span> <span class="n">frame_interval</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">manual_capture_flags</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera: </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">, frame interval </span><span class="si">{</span><span class="n">frame_interval</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="c1">#timestamp = datetime.datetime.now(datetime.timezone.utc).strftime(&quot;%Y:%m:%d %H:%M:%S&quot;)</span>
+            <span class="n">dt_obj</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">datetime</span><span class="o">.</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span>
+            <span class="n">timestamp_str</span> <span class="o">=</span> <span class="n">dt_obj</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s2">&quot;%Y:%m:</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">manual_capture_flags</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+                <span class="n">frame_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">frame_output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;camera_</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">_frame_</span><span class="si">{</span><span class="n">timestamp_str</span><span class="si">}</span><span class="s2">_manual.jpg&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved image to: </span><span class="si">{</span><span class="n">frame_filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">trigger_method</span> <span class="o">=</span> <span class="s2">&quot;manual&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">frame_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">frame_output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;camera_</span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">_frame_</span><span class="si">{</span><span class="n">timestamp_str</span><span class="si">}</span><span class="s2">.jpg&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saved image to: </span><span class="si">{</span><span class="n">frame_filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">trigger_method</span> <span class="o">=</span> <span class="s2">&quot;automatic&quot;</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Saving image </span><span class="si">{</span><span class="n">frame_filename</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="n">frame_filename</span><span class="p">,</span> <span class="n">frame</span><span class="p">)</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chmod</span><span class="p">(</span><span class="n">frame_filename</span><span class="p">,</span> <span class="mo">0o777</span><span class="p">)</span> <span class="c1">#Grants read and write to all users to ensure that label studio can access them</span>
+            
+            
+            <span class="n">user_comment</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">user_description</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">with</span> <span class="n">comment_lock</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">str</span><span class="p">(</span><span class="n">channel</span><span class="p">)</span> <span class="ow">in</span> <span class="n">camera_comments</span><span class="p">:</span>
+                    <span class="n">user_comment</span> <span class="o">=</span> <span class="n">camera_comments</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">channel</span><span class="p">)]</span>
+                    <span class="k">del</span> <span class="n">camera_comments</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">channel</span><span class="p">)]</span>  <span class="c1"># consume once</span>
+
+
+            <span class="n">SavePictureData</span><span class="p">(</span><span class="n">frame_filename</span><span class="p">,</span> <span class="n">channel</span><span class="p">,</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">dt_obj</span><span class="p">,</span> <span class="n">user_comment</span> <span class="ow">or</span> <span class="s2">&quot;No comment&quot;</span><span class="p">,</span> <span class="n">user_description</span> <span class="ow">or</span> <span class="s2">&quot;No Description&quot;</span><span class="p">,</span><span class="n">trigger_method</span><span class="p">)</span>
+
+            <span class="n">manual_capture_flags</span><span class="p">[</span><span class="n">channel</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+            <span class="c1"># Clear frame count so that it will not overflow eventually</span>
+            <span class="n">frame_count</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">frame_count</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Optional: Show frame window per camera will not work in docker</span>
+        <span class="c1"># cv2.imshow(f&#39;Camera {channel} Stream&#39;, frame)</span>
+        <span class="c1"># if cv2.waitKey(1) &amp; 0xFF == ord(&#39;q&#39;):</span>
+        <span class="c1">#     break</span>
+
+    <span class="c1"># ensure that resources are freed</span>
+    <span class="n">cap</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+    <span class="n">video_writer</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
+    <span class="c1"># cv2.destroyAllWindows()</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Finished camera channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2">. Video saved to: </span><span class="si">{</span><span class="n">video_output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<span class="c1">#This will both write the data to the exif tag and save it to the mongoDB</span>
+<div class="viewcode-block" id="SavePictureData">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.SavePictureData">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">SavePictureData</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">author</span><span class="p">,</span> <span class="n">serialNumber</span><span class="p">,</span> <span class="n">dateTime</span><span class="p">,</span> <span class="n">userComment</span><span class="p">,</span> <span class="n">description</span><span class="p">,</span> <span class="n">trgger_method</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Write EXIF metadata to an image and store metadata in MongoDB.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        image_path (str): Path to the saved image.</span>
+<span class="sd">        author (str): Name or identifier of the capture source.</span>
+<span class="sd">        serialNumber (str): Device serial number.</span>
+<span class="sd">        dateTime (datetime.datetime): Timestamp of capture.</span>
+<span class="sd">        userComment (str): User-provided comment.</span>
+<span class="sd">        description (str): Description of the image content.</span>
+<span class="sd">        trgger_method (str): How the capture was triggered (e.g., manual, interval).</span>
+
+<span class="sd">    Behavior:</span>
+<span class="sd">        - Writes EXIF metadata into the image file.</span>
+<span class="sd">        - Inserts metadata document into MongoDB.</span>
+<span class="sd">    </span>
+<span class="sd">    Todo:</span>
+<span class="sd">        add trigger_method to the database </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#images=ImageMetadata</span>
+    
+    <span class="c1">#Add the meta data to the image themselves</span>
+    <span class="n">utils</span><span class="o">.</span><span class="n">writeExifTag</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">author</span><span class="p">,</span> <span class="n">serialNumber</span><span class="p">,</span> <span class="n">dateTime</span><span class="p">,</span> <span class="n">userComment</span><span class="p">,</span> <span class="n">description</span><span class="p">)</span>
+
+
+     <span class="c1"># Convert dateTime string to datetime object (e.g. &quot;2025:07:30 14:41:04&quot;) to make querying easier</span>
+    <span class="c1"># try:</span>
+    <span class="c1">#     dt_obj = datetime.datetime.strptime(dateTime, &quot;%Y:%m:%d %H:%M:%S&quot;)</span>
+    <span class="c1"># except ValueError as e:</span>
+    <span class="c1">#     logger.error(f&quot;Invalid dateTime format: {dateTime}, Error: {e}&quot;)</span>
+    <span class="c1">#     dt_obj = None</span>
+
+    <span class="c1"># Using pydantic model to ensure data consistency</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">ImageMetadata</span><span class="p">(</span>
+        <span class="n">image_path</span><span class="o">=</span><span class="n">image_path</span><span class="p">,</span>
+        <span class="n">author</span><span class="o">=</span><span class="n">author</span><span class="p">,</span>
+        <span class="n">serial_number</span><span class="o">=</span><span class="n">serialNumber</span><span class="p">,</span>
+        <span class="n">date_time</span><span class="o">=</span><span class="n">dateTime</span><span class="p">,</span>
+        <span class="n">user_comment</span><span class="o">=</span><span class="n">userComment</span><span class="p">,</span>
+        <span class="n">description</span><span class="o">=</span><span class="n">description</span>
+    <span class="p">)</span>
+
+    <span class="c1"># Insert into MongoDB (convert to dict)</span>
+    <span class="n">resp</span> <span class="o">=</span> <span class="n">image_table</span><span class="o">.</span><span class="n">insert_one</span><span class="p">(</span><span class="n">metadata</span><span class="o">.</span><span class="n">dict</span><span class="p">())</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Inserted into MongoDb: </span><span class="si">{</span><span class="n">metadata</span><span class="o">.</span><span class="n">dict</span><span class="p">()</span><span class="si">}</span><span class="s2">, </span><span class="se">\n</span><span class="s2"> Response: </span><span class="si">{</span><span class="n">resp</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+
+
+
+
+<div class="viewcode-block" id="change_frame_interval">
+<a class="viewcode-back" href="../../../../modules/src.data_intake.data_intake.NVRConnection.html#src.data_intake.data_intake.NVRConnection.change_frame_interval">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">change_frame_interval</span><span class="p">(</span><span class="n">channel</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">frame_interval</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the capture frame interval for a channel and persist it to disk.</span>
+
+<span class="sd">    Updates the global `camera_frame_intervals` for the given `channel` (stored as a</span>
+<span class="sd">    string key) and writes the resulting mapping to FRAME_CONFIG_FILE (`config.json`)</span>
+<span class="sd">    as pretty-printed JSON.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        channel (int): Camera channel identifier to update.</span>
+<span class="sd">        frame_interval (int): New interval expressed in number of frames between saved stills.</span>
+
+<span class="sd">    Globals modified:</span>
+<span class="sd">        camera_frame_intervals (dict[str, int]): Updated with the new interval for `str(channel)`.</span>
+
+<span class="sd">    Behaviour:</span>
+<span class="sd">        - Writes the `camera_frame_intervals` mapping to FRAME_CONFIG_FILE.</span>
+<span class="sd">        - Logs success or failure.</span>
+
+<span class="sd">    Error handling:</span>
+<span class="sd">        - Any exception raised while writing the file is caught and logged; the</span>
+<span class="sd">          function does not re-raise exceptions.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">global</span> <span class="n">camera_frame_intervals</span>
+    <span class="n">camera_frame_intervals</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">channel</span><span class="p">)]</span> <span class="o">=</span> <span class="n">frame_interval</span>
+
+    <span class="c1"># Save to disk</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">FRAME_CONFIG_FILE</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">camera_frame_intervals</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Frame interval for channel </span><span class="si">{</span><span class="n">channel</span><span class="si">}</span><span class="s2"> set to </span><span class="si">{</span><span class="n">frame_interval</span><span class="si">}</span><span class="s2"> and saved to config.json&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to save config.json: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">startup_event</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;FastAPI startup handler that initializes camera capture threads and loads config.</span>
+
+<span class="sd">    This startup event reads NVR credentials from environment variables, retrieves</span>
+<span class="sd">    basic ONVIF device information, discovers available camera channels, loads</span>
+<span class="sd">    per-channel frame-intervals from FRAME_CONFIG_FILE (falls back to `g_frame_interval`),</span>
+<span class="sd">    creates manual capture `threading.Event` flags for each channel, and spawns a</span>
+<span class="sd">    daemon thread that runs `capture_camera` for each discovered channel.</span>
+
+<span class="sd">    Globals modified:</span>
+<span class="sd">        manual_capture_flags (dict[str, threading.Event]): Mapping of channel -&gt; Event used to trigger manual captures.</span>
+<span class="sd">        camera_frame_intervals (dict[str, int]): Mapping of channel -&gt; frames-between-captures.</span>
+
+<span class="sd">    Behavior:</span>
+<span class="sd">        - Calls `onvifCameraInfo` and `getCameraChannels` (network/ONVIF IO).</span>
+<span class="sd">        - May create/modify FRAME_CONFIG_FILE-backed data in memory.</span>
+<span class="sd">        - Starts one daemon thread per channel (threads call `capture_camera`).</span>
+<span class="sd">        - Logs info, warnings, and errors to `logger`.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: If NVR_USERNAME or NVR_PASSWORD environment variables are not set.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">global</span> <span class="n">manual_capture_flags</span>
+    <span class="k">global</span> <span class="n">camera_frame_intervals</span>
+
+    <span class="n">username</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVR_USERNAME&quot;</span><span class="p">)</span>
+    <span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVR_PASSWORD&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">username</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">password</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;NVR_USERNAME and NVR_PASSWORD environment variables must be set.&quot;</span><span class="p">)</span>
+
+    <span class="n">nvr_ip</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVR_IP&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Display NVR info</span>
+    <span class="n">onvifCameraInfo</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">)</span>
+
+    <span class="c1"># Get channel list</span>
+    <span class="n">channels</span> <span class="o">=</span> <span class="n">getCameraChannels</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">)</span>
+
+    <span class="c1"># Load frame intervals for how often we take pictures</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">FRAME_CONFIG_FILE</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">FRAME_CONFIG_FILE</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">camera_frame_intervals</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Loaded frame intervals from config.json: </span><span class="si">{</span><span class="n">camera_frame_intervals</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Failed to load frame intervals: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">camera_frame_intervals</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">:</span> <span class="n">g_frame_interval</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">}</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">camera_frame_intervals</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">:</span> <span class="n">g_frame_interval</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">}</span>
+
+    <span class="c1"># Create manual capture flags</span>
+    <span class="n">manual_capture_flags</span> <span class="o">=</span> <span class="p">{</span><span class="n">ch</span><span class="p">:</span> <span class="n">threading</span><span class="o">.</span><span class="n">Event</span><span class="p">()</span> <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">}</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;manual_capture_flags: </span><span class="si">{</span><span class="n">manual_capture_flags</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Start capture threads (daemon so they won’t block shutdown)</span>
+    <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">channels</span><span class="p">:</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">capture_camera</span><span class="p">,</span>
+            <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">,</span> <span class="n">ch</span><span class="p">),</span>
+            <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Started capture thread for channel </span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Startup complete — API is ready.&quot;</span><span class="p">)</span>
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/capture/&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">trigger_capture</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="n">CapturePayload</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">manual_capture_flags</span><span class="p">,</span> <span class="n">camera_comments</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">comment_lock</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="n">payload</span><span class="o">.</span><span class="n">channels</span><span class="p">:</span>
+                <span class="n">ch_str</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ch</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">ch_str</span> <span class="ow">in</span> <span class="n">manual_capture_flags</span><span class="p">:</span>
+                    <span class="c1"># Assign comment if provided comments for each channel</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Payload comments: </span><span class="si">{</span><span class="n">payload</span><span class="o">.</span><span class="n">comments</span><span class="si">}</span><span class="s2">, Payload comment: </span><span class="si">{</span><span class="n">payload</span><span class="o">.</span><span class="n">comment</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="n">payload</span><span class="o">.</span><span class="n">comments</span> <span class="ow">and</span> <span class="n">ch_str</span> <span class="ow">in</span> <span class="n">payload</span><span class="o">.</span><span class="n">comments</span><span class="p">:</span>
+                        <span class="n">camera_comments</span><span class="p">[</span><span class="n">ch_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">comments</span><span class="p">[</span><span class="n">ch_str</span><span class="p">]</span>
+
+
+                    <span class="c1"># Assign a global comment to all cameras</span>
+                    <span class="k">elif</span> <span class="n">payload</span><span class="o">.</span><span class="n">comment</span><span class="p">:</span>
+                        <span class="n">camera_comments</span><span class="p">[</span><span class="n">ch_str</span><span class="p">]</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">comment</span>
+                        
+
+                    <span class="c1"># Trigger manual capture</span>
+                    <span class="n">manual_capture_flags</span><span class="p">[</span><span class="n">ch_str</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Manual capture triggered for channel </span><span class="si">{</span><span class="n">ch_str</span><span class="si">}</span><span class="s2"> &quot;</span>
+                                <span class="sa">f</span><span class="s2">&quot;with comment: </span><span class="si">{</span><span class="n">camera_comments</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">ch_str</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Channel </span><span class="si">{</span><span class="n">ch</span><span class="si">}</span><span class="s2"> not found&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;channels&quot;</span><span class="p">:</span> <span class="n">payload</span><span class="o">.</span><span class="n">channels</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in trigger_capture: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+    
+
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/frame_interval&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">set_frame_interval</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">FrameIntervalRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Update the frame capture interval for a specific camera channel.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (FrameIntervalRequest): Channel and interval update request.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Response with status, updated channel, and new frame interval.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        500 Internal Server Error: If updating the interval fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">change_frame_interval</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">interval</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;channel&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">channel</span><span class="p">,</span> <span class="s2">&quot;frame_interval&quot;</span><span class="p">:</span> <span class="n">request</span><span class="o">.</span><span class="n">interval</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Error in set_frame_interval: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+
+
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/channels&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">channels</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">ChannelsRequest</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Channel request endpoint will return a set of currently connected channels.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        set: [&quot;1&quot;,&quot;5&quot;,&quot;7&quot;,&quot;12&quot;...] set of camera/channel ids.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        500 Internal Server Error: If channel request fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># If not specified we will use the values in the .env file</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">username</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">username</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVR_USERNAME&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">password</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVR_PASSWORD&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">nvr_ip</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nvr_ip</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getenv</span><span class="p">(</span><span class="s2">&quot;NVR_IP&quot;</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;The channel request end point has been hit.&quot;</span><span class="p">)</span>
+        <span class="n">camera_ids</span> <span class="o">=</span> <span class="n">getCameraChannels</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">password</span><span class="p">,</span> <span class="n">nvr_ip</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;data-intake camera ids: </span><span class="si">{</span><span class="n">camera_ids</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;channel_ids&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">camera_ids</span><span class="p">)}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/health&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">health</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Health check endpoint.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: {&quot;status&quot;: &quot;ok&quot;} if service is healthy.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        500 Internal Server Error: If health check fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;The health end point has been hit.&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">}</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)})</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../modules/src.html">src package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

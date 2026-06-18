@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src.data_intake.data_intake.Client module &#8212; VisionPipe 0.2.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <script src="../_static/documentation_options.js?v=938c9ccc"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="src.data_intake.data_intake.NVRConnection module" href="src.data_intake.data_intake.NVRConnection.html" />
+    <link rel="prev" title="src.data_intake.data_intake package" href="src.data_intake.data_intake.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="module-src.data_intake.data_intake.Client">
+<span id="src-data-intake-data-intake-client-module"></span><h1>src.data_intake.data_intake.Client module<a class="headerlink" href="#module-src.data_intake.data_intake.Client" title="Link to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.data_intake.data_intake.Client.</span></span><span class="sig-name descname"><span class="pre">datetime</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">year</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">month</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">day</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">hour</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">minute</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">second</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">microsecond</span></span></em><span class="optional">[</span>, <em class="sig-param"><span class="n"><span class="pre">tzinfo</span></span></em><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="optional">]</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.data_intake.data_intake.Client.datetime.date" title="src.data_intake.data_intake.Client.datetime.date"><code class="xref py py-class docutils literal notranslate"><span class="pre">date</span></code></a></p>
+<p>The year, month and day arguments are required. tzinfo may be None, or an
+instance of a tzinfo subclass. The remaining arguments may be ints.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.astimezone">
+<span class="sig-name descname"><span class="pre">astimezone</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.astimezone" title="Link to this definition">¶</a></dt>
+<dd><p>tz -&gt; convert to local time in new timezone tz</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.combine">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">combine</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.combine" title="Link to this definition">¶</a></dt>
+<dd><p>date, time -&gt; datetime with same date and time fields</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.ctime">
+<span class="sig-name descname"><span class="pre">ctime</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.ctime" title="Link to this definition">¶</a></dt>
+<dd><p>Return ctime() style string.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.date">
+<span class="sig-name descname"><span class="pre">date</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.date" title="Link to this definition">¶</a></dt>
+<dd><p>Return date object with same year, month and day.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.dst">
+<span class="sig-name descname"><span class="pre">dst</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.dst" title="Link to this definition">¶</a></dt>
+<dd><p>Return self.tzinfo.dst(self).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.fold">
+<span class="sig-name descname"><span class="pre">fold</span></span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.fold" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.fromisoformat">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromisoformat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.fromisoformat" title="Link to this definition">¶</a></dt>
+<dd><p>string -&gt; datetime from a string in most ISO 8601 formats</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.fromtimestamp">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">fromtimestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.fromtimestamp" title="Link to this definition">¶</a></dt>
+<dd><p>timestamp[, tz] -&gt; tz’s local time from POSIX timestamp.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.hour">
+<span class="sig-name descname"><span class="pre">hour</span></span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.hour" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.isoformat">
+<span class="sig-name descname"><span class="pre">isoformat</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.isoformat" title="Link to this definition">¶</a></dt>
+<dd><p>[sep] -&gt; string in ISO 8601 format, YYYY-MM-DDT[HH[:MM[:SS[.mmm[uuu]]]]][+HH:MM].
+sep is used to separate the year from the time, and defaults to ‘T’.
+The optional argument timespec specifies the number of additional terms
+of the time to include. Valid options are ‘auto’, ‘hours’, ‘minutes’,
+‘seconds’, ‘milliseconds’ and ‘microseconds’.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.max">
+<span class="sig-name descname"><span class="pre">max</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.datetime(9999,</span> <span class="pre">12,</span> <span class="pre">31,</span> <span class="pre">23,</span> <span class="pre">59,</span> <span class="pre">59,</span> <span class="pre">999999)</span></em><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.max" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.microsecond">
+<span class="sig-name descname"><span class="pre">microsecond</span></span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.microsecond" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.min">
+<span class="sig-name descname"><span class="pre">min</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.datetime(1,</span> <span class="pre">1,</span> <span class="pre">1,</span> <span class="pre">0,</span> <span class="pre">0)</span></em><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.min" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.minute">
+<span class="sig-name descname"><span class="pre">minute</span></span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.minute" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.now">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">now</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.now" title="Link to this definition">¶</a></dt>
+<dd><p>Returns new datetime object representing current time local to tz.</p>
+<blockquote>
+<div><dl class="simple">
+<dt>tz</dt><dd><p>Timezone object.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>If no tz is specified, uses local timezone.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.replace">
+<span class="sig-name descname"><span class="pre">replace</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.replace" title="Link to this definition">¶</a></dt>
+<dd><p>Return datetime with new specified fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.resolution">
+<span class="sig-name descname"><span class="pre">resolution</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">datetime.timedelta(microseconds=1)</span></em><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.resolution" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.second">
+<span class="sig-name descname"><span class="pre">second</span></span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.second" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.strptime">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">strptime</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.strptime" title="Link to this definition">¶</a></dt>
+<dd><p>string, format -&gt; new datetime parsed from a string (like time.strptime()).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.time">
+<span class="sig-name descname"><span class="pre">time</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.time" title="Link to this definition">¶</a></dt>
+<dd><p>Return time object with same time but with tzinfo=None.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.timestamp">
+<span class="sig-name descname"><span class="pre">timestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.timestamp" title="Link to this definition">¶</a></dt>
+<dd><p>Return POSIX timestamp as float.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.timetuple">
+<span class="sig-name descname"><span class="pre">timetuple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.timetuple" title="Link to this definition">¶</a></dt>
+<dd><p>Return time tuple, compatible with time.localtime().</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.timetz">
+<span class="sig-name descname"><span class="pre">timetz</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.timetz" title="Link to this definition">¶</a></dt>
+<dd><p>Return time object with same time and tzinfo.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.tzinfo">
+<span class="sig-name descname"><span class="pre">tzinfo</span></span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.tzinfo" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.tzname">
+<span class="sig-name descname"><span class="pre">tzname</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.tzname" title="Link to this definition">¶</a></dt>
+<dd><p>Return self.tzinfo.tzname(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.utcfromtimestamp">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">utcfromtimestamp</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.utcfromtimestamp" title="Link to this definition">¶</a></dt>
+<dd><p>Construct a naive UTC datetime from a POSIX timestamp.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.utcnow">
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">utcnow</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.utcnow" title="Link to this definition">¶</a></dt>
+<dd><p>Return a new datetime representing UTC day and time.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.utcoffset">
+<span class="sig-name descname"><span class="pre">utcoffset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.utcoffset" title="Link to this definition">¶</a></dt>
+<dd><p>Return self.tzinfo.utcoffset(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.data_intake.data_intake.Client.datetime.utctimetuple">
+<span class="sig-name descname"><span class="pre">utctimetuple</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.data_intake.data_intake.Client.datetime.utctimetuple" title="Link to this definition">¶</a></dt>
+<dd><p>Return UTC time tuple, compatible with time.localtime().</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">VisionPipe</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="src.html">src package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="src.html#subpackages">Subpackages</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="src.data_intake.html">src.data_intake package</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="src.data_intake.html#subpackages">Subpackages</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="src.data_stream.html">src.data_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.deep_stream.html">src.deep_stream package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_deploy.html">src.model_deploy package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.model_training.html">src.model_training package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_api.html">src.pig_sorting_api package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="src.pig_sorting_streamlit.html">src.pig_sorting_streamlit package</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="src.html">src package</a><ul>
+  <li><a href="src.data_intake.html">src.data_intake package</a><ul>
+  <li><a href="src.data_intake.data_intake.html">src.data_intake.data_intake package</a><ul>
+      <li>Previous: <a href="src.data_intake.data_intake.html" title="previous chapter">src.data_intake.data_intake package</a></li>
+      <li>Next: <a href="src.data_intake.data_intake.NVRConnection.html" title="next chapter">src.data_intake.data_intake.NVRConnection module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2026, Nathaniel Yeo, Muhammad Tufail.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/modules/src.data_intake.data_intake.Client.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
