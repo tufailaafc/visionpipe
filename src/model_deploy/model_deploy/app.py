@@ -609,7 +609,23 @@ def pig_lengths(body_parts:list[Dict]):
     # convert pixel values to cm
     # the ratio is dependent on camera and distance from target
     # pixel_to_cm_ratio= 29.1
-    pixel_to_cm_ratio= 10
+    #pixel_to_cm_ratio= 10
+
+    # Found this pixel to cm ratio by using the wooden block in the image to find that to cover the 30 cm distance
+    # between the tape markers, it takes roughly 400 pixels. So 400 pixels / 30 cm = 13.33 pixels/cm
+    #pixel_to_cm_ratio = 13.33
+
+    # Found this pixel to cm ratio by using the top of the RFID panel in the image to find that to cover the 41.5 cm distance
+    # it takes roughly 460 pixels. So 460 pixels / 41.5 cm = 11.08 pixels/cm
+    #pixel_to_cm_ratio = 11.08
+
+    # Found this pixel to cm ratio by using near the middle (parallel with first screw set) of the RFID panel in the image
+    # to find that to cover the 41.5 cm distance it takes roughly 350 pixels. So 350 pixels / 41.5 cm = 8.44 pixels/cm
+    #pixel_to_cm_ratio = 8.44
+
+    # Found this pixel to cm ratio by using near the middle (Below the first screw set by a bit) of the RFID panel in the image
+    # to find that to cover the 41.5 cm distance it takes roughly 255 pixels. So 255 pixels / 41.5 cm = 6.14 pixels/cm
+    pixel_to_cm_ratio = 6.14
     pig_length = pig_length_px / pixel_to_cm_ratio
     pig_width = pig_width_px / pixel_to_cm_ratio
 
