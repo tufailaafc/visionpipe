@@ -13,6 +13,7 @@ from deeplabcut.utils import auxiliaryfunctions
 # import tempfile
 import shutil
 import pandas as pd
+import base64
 
 import os
 import glob
@@ -648,9 +649,9 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
             print(f"Depth value at pig's center: {depth_value} mm")
 
             # Interpolate pixel_to_cm_ratio based on depth, returning -1 if the depth is outside the expected range
-            if depth_value > upper_depth * 10:  # Convert cm to mm
+            if depth_value < upper_depth * 10:  # Convert cm to mm
                 pixel_to_cm_ratio = -1
-            elif depth_value < lower_depth * 10:
+            elif depth_value > lower_depth * 10:
                 pixel_to_cm_ratio = -1
             else:
                 # Linear interpolation between upper and lower ratios
@@ -796,23 +797,13 @@ def decode_depth_image(instance):
     if instance.depth_image is None:
         return None
 
-    depth_bytes = base64.b64decode(
-                        instance.depth_image
-                  )
+    depth_bytes = base64.b64decode(instance.depth_image)
 
-    depth = np.frombuffer(
-                    depth_bytes,
-                    dtype=np.uint16
-            )
+    depth = np.frombuffer(depth_bytes, dtype=np.uint16)
 
-    if (
-        instance.depth_height and
-        instance.depth_width
-    ):
+    depth = depth.reshape(instance.720, instance.1280)  # Assuming the depth image is 720x1280
 
-        depth = depth.reshape(
-                    instance.depth_height,
-                    instance.depth_width
-                )
+#    if (instance.depth_height and instance.depth_width):
+#        depth = depth.reshape(instance.depth_height, instance.depth_width)
 
     return depth

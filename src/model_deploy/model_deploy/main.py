@@ -55,15 +55,10 @@ logging.basicConfig(
 # START WITH ADDING THE NEW CLASSES FOR THE REQUESTS AND RESPONSES THAT HANDLE DEPTH AS WELL
 
 class PredictionInstance(BaseModel):
-
     image:str
-
     depth_image: Optional[str] = None
-
     depth_format: Optional[str] = None
-
     depth_height: Optional[int] = None
-
     depth_width: Optional[int] = None
 
 # For validating all request and responses
@@ -279,13 +274,14 @@ async def predict_chain(request: ChainPredictionRequest):
         # Process each image passed
         for instance in request.instances:
 
-            #Ensure that the image is valid
-            if isinstance(instance, dict) and "image" in instance:
+            # Removed the check for instance validity here since we are already validating in the PredictionInstance model
+            for instance in request.instances:
+
                 image_data = base64.b64decode(instance.image)
+
                 input_image = app_model.get_image_from_bytes(image_data)
+
                 depth_image = app_model.decode_depth_image(instance)
-            else:
-                raise HTTPException(status_code=400, detail="Invalid instance format")
 
             chain_results = []
             parameters = request.parameters or {}
