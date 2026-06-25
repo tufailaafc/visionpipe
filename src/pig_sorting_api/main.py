@@ -154,6 +154,14 @@ class ChainPredictionResponse(BaseModel):
     predictions: List[Dict[str, Any]]
 
 
+class PredictionInstance(BaseModel):
+    image: str
+
+    depth_image: Optional[str] = None
+
+    depth_format: Optional[str] = None
+
+
 class ChainPredictionRequest(BaseModel):
     """
     Request model for chained model predictions.
@@ -169,7 +177,9 @@ class ChainPredictionRequest(BaseModel):
             parameters forwarded to the backend prediction service.
     """
     model_names: List[str]
-    instances: List[Dict[str, str]]
+
+    instances: List[PredictionInstance]
+
     parameters: Optional[Dict[str, Any]] = None
 
 
@@ -263,6 +273,7 @@ async def load_default_models():
             except Exception as e:
                 logger.error(f"Failed to load model {name}: {e}")
 
+# TODO UPDATE THIS FUNCTION TO ALSO HANDLE DEPTH IMAGES FROM THE MONGODB
 async def send_to_chain_prediction(image_path: str):
     """
     Send an image to the chain prediction endpoint and save the annotated results.
@@ -865,7 +876,7 @@ async def forward_chain_predict(request: ChainPredictionRequest):
         try:
             resp = await client.post(
                 f"{MODEL_DEPLOY_URL}/model/predict/chain",
-                json=request.dict()
+                json=request.model_dump()
             )
             resp.raise_for_status()
             backend_response = resp.json()
