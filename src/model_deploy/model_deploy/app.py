@@ -36,8 +36,6 @@ logging.basicConfig(
 # this is the folder where we look for our models, this is relative to the inside of the docker container
 MODEL_ROOT = "/app/models"
 
-
-
 # Model initialization and readiness state
 model_yolo = None
 _model_ready = False
@@ -555,6 +553,7 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
                 - `y` (float): The y coord of the part
 
         depth_image (np.ndarray, optional): Depth image for more accurate weight estimation Defaults to None.
+
     Returns:
         Dict:
             - "pig_length" (float): The length of the pig in cenitmeters returns -1 if deemed invalid
@@ -588,27 +587,57 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
 
 
     # calculate the length of each body part in pixels
-    pig_length_px = polyline_length([body_part["Spine1"], 
-                                  body_part["Center"], 
-                                  body_part["Spine2"], 
-                                  body_part["Tail_base"]])
+#    pig_length_px = polyline_length([body_part["Spine1"], 
+#                                  body_part["Center"], 
+#                                  body_part["Spine2"], 
+#                                  body_part["Tail_base"]])
+
+    pig_length = coordinate_to_distance_translate(body_part["Spine1"], 
+                                                     body_part["Center"], 
+                                                     fetch_depth(body_part["Spine1"], depth_image),
+                                                     fetch_depth(body_part["Center"], depth_image))
+    
+    pig_length += coordinate_to_distance_translate(body_part["Center"], 
+                                                     body_part["Spine2"], 
+                                                     fetch_depth(body_part["Center"], depth_image),
+                                                     fetch_depth(body_part["Spine2"], depth_image))
+    
+    pig_length += coordinate_to_distance_translate(body_part["Spine2"], 
+                                                     body_part["Tail_base"], 
+                                                     fetch_depth(body_part["Spine2"], depth_image),
+                                                     fetch_depth(body_part["Tail_base"], depth_image))
+    
+    print(pig_length)
     
 
-    shoulder_width_px = polyline_length([
-        body_part["Shoulder_left"], 
-        body_part["Shoulder_right"]])
-    
-    
-    hip_width_px = polyline_length([
-        body_part["Hip_left"],
-        body_part["Hip_right"]])
-    
-    print(f"Pig Length in pixels: {pig_length_px}")
-    print(f"Pig Shoulder width in pixels: {shoulder_width_px}")
-    print(f"Pig hip width in pixels: {hip_width_px}")
-    
-    pig_width_px = (hip_width_px + shoulder_width_px)/2
+#    shoulder_width_px = polyline_length([
+#        body_part["Shoulder_left"], 
+#        body_part["Shoulder_right"]])
 
+    shoulder_width = coordinate_to_distance_translate(body_part["Shoulder_left"],
+                                                         body_part["Shoulder_right"],
+                                                         fetch_depth(body_part["Shoulder_left"], depth_image),
+                                                         fetch_depth(body_part["Shoulder_right"], depth_image))    
+    
+#    hip_width_px = polyline_length([
+#        body_part["Hip_left"],
+#        body_part["Hip_right"]])
+    
+    hip_width = coordinate_to_distance_translate(body_part["Hip_left"],
+                                                         body_part["Hip_right"],
+                                                         fetch_depth(body_part["Hip_left"], depth_image),
+                                                         fetch_depth(body_part["Hip_right"], depth_image))    
+    
+    #print(f"Pig Length in pixels: {pig_length_px}")
+    #print(f"Pig Shoulder width in pixels: {shoulder_width_px}")
+    #print(f"Pig hip width in pixels: {hip_width_px}")
+    
+    #pig_width_px = (hip_width_px + shoulder_width_px)/2
+    pig_width = (hip_width + shoulder_width)/2
+
+    print(pig_width)
+
+    """
     # convert pixel values to cm
     # the ratio is dependent on camera and distance from target
     # pixel_to_cm_ratio= 29.1
@@ -616,12 +645,12 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
 
     # Found this pixel to cm ratio by using the wooden block in the image to find that to cover the 30 cm distance
     # between the tape markers, it takes roughly 400 pixels. So 400 pixels / 30 cm = 13.33 pixels/cm
-    upper_depth = 53 #cm
+    upper_depth = 475 #mm
     upper_pixel_to_cm_ratio = 13.33
 
     # Found this pixel to cm ratio by using the length of a hole in the floor grating to find that to cover a distance of 155cm
     # it takes rougly 695 pixels. So 695 pixels / 155 cm = 4.48 pixels/cm
-    lower_depth = 140 #cm
+    lower_depth = 1400 #mm
     lower_pixel_to_cm_ratio = 4.48
 
     # Found this pixel to cm ratio by using the top of the RFID panel in the image to find that to cover the 41.5 cm distance
@@ -649,15 +678,17 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
             print(f"Depth value at pig's center: {depth_value} mm")
 
             # Interpolate pixel_to_cm_ratio based on depth, returning -1 if the depth is outside the expected range
-            if depth_value < upper_depth * 10:  # Convert cm to mm
+            if depth_value < upper_depth:
                 pixel_to_cm_ratio = -1
-            elif depth_value > lower_depth * 10:
+            elif depth_value > lower_depth:
                 pixel_to_cm_ratio = -1
             else:
                 # Linear interpolation between upper and lower ratios
                 ratio_range = upper_pixel_to_cm_ratio - lower_pixel_to_cm_ratio
                 depth_range = lower_depth - upper_depth
-                pixel_to_cm_ratio = upper_pixel_to_cm_ratio + (depth_value / 10 - upper_depth) * (ratio_range / depth_range)
+
+                depth_factor = (depth_value - upper_depth) / depth_range
+                pixel_to_cm_ratio = upper_pixel_to_cm_ratio - depth_factor * ratio_range
 
             print(f"Interpolated pixel to cm ratio: {pixel_to_cm_ratio}")
         else:
@@ -665,6 +696,7 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
 
     pig_length = pig_length_px / pixel_to_cm_ratio
     pig_width = pig_width_px / pixel_to_cm_ratio
+    """
 
     # check to see if the length and width makes some level of sense
     if pig_length > 145 or pig_length < 25:
@@ -801,9 +833,70 @@ def decode_depth_image(instance):
 
     depth = np.frombuffer(depth_bytes, dtype=np.uint16)
 
-    depth = depth.reshape(instance.720, instance.1280)  # Assuming the depth image is 720x1280
+    depth = depth.reshape(720, 1280)  # Assuming the depth image is 1280x720 pixels. Adjust if necessary.
 
 #    if (instance.depth_height and instance.depth_width):
 #        depth = depth.reshape(instance.depth_height, instance.depth_width)
 
     return depth
+
+def fetch_depth(coord:tuple[float, float], depth_image):
+    """
+    Gets the depth value corresponding to an x-y coordinate point in the image.
+
+    Args:
+        coord (tuple): Pixel coordinate (x, y) of the point.
+        depth_image (np.ndarray): The raw depth image stored as an numpy array.
+    
+    Returns:
+        float: the depth of that point in mm.
+    """
+    x, y = coord
+
+    x = int(round(x))
+    y = int(round(y))
+
+    return depth_image[y, x]
+
+def coordinate_to_distance_translate(coord1:tuple[float, float], coord2:tuple[float, float], depth_value1:float, depth_value2:float):
+    """
+    Translates pixel coordinates (x, y) to a real-world distance between two points using depth information.
+
+    Args:
+        coord1 (tuple): Pixel coordinate (x, y) of the first point.
+        coord2 (tuple): Pixel coordinate (x, y) of the second point.
+        depth_value1 (float): Depth value at the first point (in mm).
+        depth_value2 (float): Depth value at the second point (in mm).
+
+    Returns:
+        float: Real-world length in mm.
+    """
+
+    # Camera Intrinsics that I have stolen from the pointcloud generating script, will be replaced when actual intrinsics are acquired
+    fx=600
+    fy=600
+    cx=320
+    cy=240
+
+    # Using to quickly debug since I am getting issues with irregular depth readings on the shoulders, so if they
+    # Have too great of a difference, just set them equal to each other to negate the difference in height from shoulders
+    # REMOVE LATER ONCE DEPTH READING/CAPTURE IS WORKING BETTER
+    if depth_value1 - depth_value2 > 50: # Use a 5 cm tolerance range
+        depth_value1 = depth_value2
+
+    # Calculate the real-world coordinates for both points
+    x1 = (int) ((coord1[0] - cx) * depth_value1 / fx)
+    y1 = (int) ((coord1[1] - cy) * depth_value1 / fy)
+
+    x2 = (int) ((coord2[0] - cx) * depth_value2 / fx)
+    y2 = (int) ((coord2[1] - cy) * depth_value2 / fy)
+
+    # Calculate the Euclidean distance between the two points in 3D space
+    print(coord1[0], coord1[1], coord2[0], coord2[1], depth_value1, depth_value2) # DEBUG
+    print(x1, y1, x2, y2, depth_value1, depth_value2) # DEBUG
+    distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (int(depth_value2) - int(depth_value1))**2)
+    print(distance) # DEBUG
+    print("-------------------------------------------------------") #DEBUG
+    distance = distance * 0.7 # Shrinking the distance down by a bit, as it seems to be overshooting length and width by a bit
+
+    return distance / 10 # Converts from mm back into cm to stay in line with the rest of the program
