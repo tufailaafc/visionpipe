@@ -52,22 +52,31 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
+# START WITH ADDING THE NEW CLASSES FOR THE REQUESTS AND RESPONSES THAT HANDLE DEPTH AS WELL
 
+class PredictionInstance(BaseModel):
+
+    image:str
+
+    depth_image: Optional[str] = None
+
+    depth_format: Optional[str] = None
+
+    depth_height: Optional[int] = None
+
+    depth_width: Optional[int] = None
 
 # For validating all request and responses
 class PredictionRequest(BaseModel):
-    model_name: str
-    # list of images
-    instances: list
-    # for thing like confidence etc
-    parameters: Optional[Dict[str, Any]] = None
-
+    model_name:str
+    instances:List[PredictionInstance]
+    parameters: Optional[Dict]=None
 
 # So that we can do inference with multiple models
 class ChainPredictionRequest(BaseModel):
-    model_names: list[str]              # list of models to run in sequence
-    instances: list                     # list of base64 images
-    parameters: Optional[Dict[str, Any]] = None
+    model_names:List[str]
+    instances:List[PredictionInstance]
+    parameters: Optional[Dict]=None
 
 # One model’s output in the chain
 class ModelResult(BaseModel):
@@ -147,10 +156,20 @@ async def predict(request: PredictionRequest):
 
         for instance in request.instances:
             # check to ensure that we are getting an image
-            if isinstance(instance, dict):
-                if "image" in instance:
-                    image_data = base64.b64decode(instance["image"])
-                    input_image = app_model.get_image_from_bytes(image_data)
+            for instance in request.instances:
+
+                image_data = base64.b64decode(instance.image)
+
+                input_image = app_model.get_image_from_bytes(image_data)
+
+                depth_image = app_model.decode_depth_image(instance)
+
+                depth_image = None
+                if instance.get(depth_image):
+                    depth_bytes = base64.b64decode(instance.depth_image)
+
+                    depth_image = np.frombuffer(depth_bytes, dtype=np.uint16).reshape((instance.depth_height, instance.depth_width))
+
                 else:
                     raise HTTPException(status_code=400, detail="Instance must contain 'image' field")
             else:
@@ -262,8 +281,9 @@ async def predict_chain(request: ChainPredictionRequest):
 
             #Ensure that the image is valid
             if isinstance(instance, dict) and "image" in instance:
-                image_data = base64.b64decode(instance["image"])
+                image_data = base64.b64decode(instance.image)
                 input_image = app_model.get_image_from_bytes(image_data)
+                depth_image = app_model.decode_depth_image(instance)
             else:
                 raise HTTPException(status_code=400, detail="Invalid instance format")
 
@@ -291,7 +311,7 @@ async def predict_chain(request: ChainPredictionRequest):
 
 
                     detections = app_model.format_dlc_results(results)
-                    pig_dimensions = app_model.pig_lengths(detections)
+                    pig_dimensions = app_model.pig_lengths(detections, depth_image)
                     pig_weight = app_model.pig_weight(pig_dimensions.get("pig_length"),pig_dimensions.get("pig_width"))
                     detections.append(pig_dimensions)
                     detections.append({"weight":pig_weight})

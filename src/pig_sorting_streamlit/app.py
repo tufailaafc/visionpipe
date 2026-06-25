@@ -13,7 +13,7 @@ MODEL_DEPLOY_URL = "http://model-deploy:8601"
 
 st.set_page_config(page_title="AI-assisted Pigs Evaluation", layout="centered")
 st.title("AI-assisted Pigs Evaluation")
-st.subheader("Dr. Muhammad Tufail, Nathaniel Yeo")
+st.subheader("Dr. Muhammad Tufail, Nathaniel Yeo, Jake Tensen")
 
 
 
@@ -29,14 +29,15 @@ def parse_channels(camera_ids):
 
 
 # --- Run chain prediction ---
-def chain_prediction(uploaded_files, models_to_chain, return_annotated, confidence):
+def chain_prediction(uploaded_rgb_files, uploaded_depth_files, models_to_chain, return_annotated, confidence):
     """
     Sends request to perform prediction utilizing model(s) and sets the results in session state "prediction_results"
 
     :noindex:
 
     Parameters:
-        uploaded_files   (list[UploadedFile]): A list of all the images
+        uploaded_rgb_files   (list[UploadedFile]): A list of all the images
+        uploaded_depth_files (list[UploadedFile]): A list of all the depth images uploaded in the same order as the rgb images, if depth assistance is not used this will be None
         models_to_chain  (list[Dict]):         A list of all the models to perform inference with order matters. starts with first element
         return_annotated (bool):               A flag to tell us if we should return a image, this image will have annotations
         confidence       (float):              This is the threshold for what classes we consider valid and will return 0.5 = 50%  
@@ -45,27 +46,71 @@ def chain_prediction(uploaded_files, models_to_chain, return_annotated, confiden
         None  
     """
     if st.button("Run Chain Prediction"):
-        if not uploaded_files:
+        if not uploaded_rgb_files:
             st.error("Please upload at least one image.")
         elif not models_to_chain:
             st.error("Please select at least one model for chaining.")
+        elif uploaded_depth_files and (len(uploaded_depth_files) != len(uploaded_rgb_files) and len(uploaded_depth_files) != 0):
+            st.error(
+                "Number of depth images must match RGB images."
+            )
         else:
             instances = []
-            for file in uploaded_files:
-                img_bytes = file.read()
-                img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-                instances.append({"image": img_b64})
+
+            for idx, rgb_file in enumerate(uploaded_rgb_files):
+
+                rgb_bytes = rgb_file.read()
+
+                rgb_b64 = base64.b64encode(
+                    rgb_bytes
+                ).decode("utf-8")
+
+
+                instance = {
+                    "image": rgb_b64
+                }
+
+
+                if uploaded_depth_files:
+
+                    depth_bytes = uploaded_depth_files[idx].read()
+
+                    depth_b64 = base64.b64encode(
+                        depth_bytes
+                    ).decode("utf-8")
+
+                    instance["depth_image"] = depth_b64
+                    instance["depth_format"] = "raw"
+                    instance["depth_height"]=480
+                    instance["depth_width"]=640
+
+
+                instances.append(instance)
 
             payload = {
                 "model_names": models_to_chain,
+
                 "instances": instances,
-                "parameters": {"return_annotated_image": return_annotated,
-                            "confidence": confidence,}
+
+                "parameters":{
+
+                    "return_annotated_image":
+                        return_annotated,
+
+                    "confidence":
+                        confidence
+                }
             }
 
             with st.spinner("Running chain prediction..."):
                 st.json(payload)
                 try:
+                    if uploaded_depth_files:
+                        st.info(
+                            f"Using depth assistance for "
+                            f"{len(uploaded_depth_files)} images."
+                        )
+                    
                     resp = requests.post(f"{MIDDLEWARE_URL}/chain_predict", json=payload)
                     resp.raise_for_status()
                     results = resp.json().get("predictions", [])
@@ -159,7 +204,7 @@ def set_camera_interval(camera_ids, frame_between_pic):
                 st.error(f"Errors occurred: {errors}")
 
 
-
+# THIS METHOD IS NOT BEING USED RIGHT NOW AND MAY NOT BE FULLY FUNCTIONAL. IT IS A PLACEHOLDER FOR FUTURE DEVELOPMENT.
 def trigger_picture(camera_ids, models_to_chain, return_annotated, confidence):
     #trigger picture once
     if st.button("Take one picture now"):
@@ -180,13 +225,25 @@ def trigger_picture(camera_ids, models_to_chain, return_annotated, confidence):
                 )
                 response.raise_for_status()
                 st.success(f"Took picture(s) for channels: {channels}")
-                chain_prediction(response.images, models_to_chain, return_annotated, confidence)
+                #chain_prediction(response.images, models_to_chain, return_annotated, confidence)
             except requests.exceptions.RequestException as e:
                 st.error(f"Failed to take picture: {e}")
 
 
 def set_inference_variables():
-    uploaded_files = st.file_uploader("Upload pig images", accept_multiple_files=True, type=["jpg", "jpeg", "png"])
+    #Upload RGB images for inference
+    uploaded_rgb_files = st.file_uploader("Upload pig images", accept_multiple_files=True, type=["jpg", "jpeg", "png"])
+
+    # Optionally utilize depth images for inference to get more accurate weight estimations
+    depth_assistance = st.checkbox(
+        "Use depth assistance (optional)",
+        value=False
+    )
+
+    uploaded_depth_files = []
+
+    if depth_assistance:
+        uploaded_depth_files = st.file_uploader("Upload raw depth images (order must match RGB images)", accept_multiple_files=True, type=["raw"])
 
     # --- Choose models to chain ---
     models_to_chain = st.multiselect("Select models to chain (order matters)", st.session_state.models)
@@ -197,7 +254,7 @@ def set_inference_variables():
     # --- Annotated image toggle ---
     return_annotated = st.checkbox("Return annotated image", value=True)
 
-    return uploaded_files, models_to_chain, return_annotated, confidence
+    return uploaded_rgb_files, uploaded_depth_files, models_to_chain, return_annotated, confidence
 
 def load_models():
     # Fetch available discovered models
@@ -217,6 +274,9 @@ def load_models():
         st.stop()
 
     if st.button("Refresh model list"):
+
+        get_discovered_models.clear()
+
         models = get_discovered_models()
 
     # Model selection
@@ -319,14 +379,14 @@ set_camera_interval(camera_ids, frame_interval)
 
 load_models()
 
-uploaded_files, models_to_chain, return_annotated, confidence = set_inference_variables()
+uploaded_rgb_files, uploaded_depth_files, models_to_chain, return_annotated, confidence = set_inference_variables()
 
 trigger_picture(camera_ids, models_to_chain, return_annotated, confidence)
 
 
 
 
-chain_prediction(uploaded_files, models_to_chain, return_annotated, confidence)
+chain_prediction(uploaded_rgb_files, uploaded_depth_files, models_to_chain, return_annotated, confidence)
 
 
 display_prediction()

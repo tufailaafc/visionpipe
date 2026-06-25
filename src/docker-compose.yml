@@ -37,7 +37,7 @@ services:
   #   restart: unless-stopped
 
   # The frontend for users to interact with our system
-  pig-skorting-streamlit:
+  pig-sorting-streamlit:
     build:
       context: ./pig_sorting_streamlit
       dockerfile: Dockerfile

@@ -5,7 +5,7 @@ from ultralytics import YOLO
 import logging
 import PIL
 import io
-import numpy
+import numpy as np
 from typing import Dict, Any
 import deeplabcut
 from pathlib import Path
@@ -541,7 +541,7 @@ def polyline_length(segments:list[tuple[float,float]]):
     
     return total_length
 
-def pig_lengths(body_parts:list[Dict]):
+def pig_lengths(body_parts:list[Dict], depth_image=None):
     """
     Takes in a dictionary of parts with xy coords and calculates the rough dimensions of the pig.
     If the dimensions are outside the measure of deviation we will return -1
@@ -552,6 +552,8 @@ def pig_lengths(body_parts:list[Dict]):
                 - `bodypart` (str): The name of the bodypart
                 - `x` (float): The x coord of the part
                 - `y` (float): The y coord of the part
+
+        depth_image (np.ndarray, optional): Depth image for more accurate weight estimation Defaults to None.
     Returns:
         Dict:
             - "pig_length" (float): The length of the pig in cenitmeters returns -1 if deemed invalid
@@ -613,7 +615,13 @@ def pig_lengths(body_parts:list[Dict]):
 
     # Found this pixel to cm ratio by using the wooden block in the image to find that to cover the 30 cm distance
     # between the tape markers, it takes roughly 400 pixels. So 400 pixels / 30 cm = 13.33 pixels/cm
-    #pixel_to_cm_ratio = 13.33
+    upper_depth = 53 #cm
+    upper_pixel_to_cm_ratio = 13.33
+
+    # Found this pixel to cm ratio by using the length of a hole in the floor grating to find that to cover a distance of 155cm
+    # it takes rougly 695 pixels. So 695 pixels / 155 cm = 4.48 pixels/cm
+    lower_depth = 140 #cm
+    lower_pixel_to_cm_ratio = 4.48
 
     # Found this pixel to cm ratio by using the top of the RFID panel in the image to find that to cover the 41.5 cm distance
     # it takes roughly 460 pixels. So 460 pixels / 41.5 cm = 11.08 pixels/cm
@@ -625,7 +633,35 @@ def pig_lengths(body_parts:list[Dict]):
 
     # Found this pixel to cm ratio by using near the middle (Below the first screw set by a bit) of the RFID panel in the image
     # to find that to cover the 41.5 cm distance it takes roughly 255 pixels. So 255 pixels / 41.5 cm = 6.14 pixels/cm
-    pixel_to_cm_ratio = 6.14
+    #pixel_to_cm_ratio = 6.14
+
+    # Since 8.44 was too small and 6.14 was too great, going to have the default be 7.20 pixels/cm, which is roughly the middle of the two values.
+    pixel_to_cm_ratio = 7.20
+
+    if depth_image is not None:
+        # Get the depth value at the center of the pig
+        center_x = int(body_part["Center"][0])
+        center_y = int(body_part["Center"][1])
+
+        if 0 <= center_x < depth_image.shape[1] and 0 <= center_y < depth_image.shape[0]:
+            depth_value = depth_image[center_y, center_x]
+            print(f"Depth value at pig's center: {depth_value} mm")
+
+            # Interpolate pixel_to_cm_ratio based on depth, returning -1 if the depth is outside the expected range
+            if depth_value > upper_depth * 10:  # Convert cm to mm
+                pixel_to_cm_ratio = -1
+            elif depth_value < lower_depth * 10:
+                pixel_to_cm_ratio = -1
+            else:
+                # Linear interpolation between upper and lower ratios
+                ratio_range = upper_pixel_to_cm_ratio - lower_pixel_to_cm_ratio
+                depth_range = lower_depth - upper_depth
+                pixel_to_cm_ratio = upper_pixel_to_cm_ratio + (depth_value / 10 - upper_depth) * (ratio_range / depth_range)
+
+            print(f"Interpolated pixel to cm ratio: {pixel_to_cm_ratio}")
+        else:
+            print("Center coordinates are out of bounds for the depth image.")
+
     pig_length = pig_length_px / pixel_to_cm_ratio
     pig_width = pig_width_px / pixel_to_cm_ratio
 
@@ -754,3 +790,29 @@ def format_results_yolo(result, model_name):
             "detections": detections,
             "detection_count": len(detections)
             }
+
+def decode_depth_image(instance):
+
+    if instance.depth_image is None:
+        return None
+
+    depth_bytes = base64.b64decode(
+                        instance.depth_image
+                  )
+
+    depth = np.frombuffer(
+                    depth_bytes,
+                    dtype=np.uint16
+            )
+
+    if (
+        instance.depth_height and
+        instance.depth_width
+    ):
+
+        depth = depth.reshape(
+                    instance.depth_height,
+                    instance.depth_width
+                )
+
+    return depth
