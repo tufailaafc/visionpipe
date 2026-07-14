@@ -592,13 +592,15 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
 #                                  body_part["Spine2"], 
 #                                  body_part["Tail_base"]])
 
+#    center_depth = fetch_depth(body_part["Center"], depth_image)
+
     pig_length = coordinate_to_distance_translate(body_part["Spine1"], 
-                                                     body_part["Center"], 
+                                                     body_part["Center"],
                                                      fetch_depth(body_part["Spine1"], depth_image),
                                                      fetch_depth(body_part["Center"], depth_image))
     
     pig_length += coordinate_to_distance_translate(body_part["Center"], 
-                                                     body_part["Spine2"], 
+                                                     body_part["Spine2"],
                                                      fetch_depth(body_part["Center"], depth_image),
                                                      fetch_depth(body_part["Spine2"], depth_image))
     
@@ -614,19 +616,25 @@ def pig_lengths(body_parts:list[Dict], depth_image=None):
 #        body_part["Shoulder_left"], 
 #        body_part["Shoulder_right"]])
 
+    #shoulder_left_depth_point = point_toward(body_part["Shoulder_left"], body_part["Center"])
+    #shoulder_right_depth_point = point_toward(body_part["Shoulder_right"], body_part["Center"])
+
     shoulder_width = coordinate_to_distance_translate(body_part["Shoulder_left"],
                                                          body_part["Shoulder_right"],
                                                          fetch_depth(body_part["Shoulder_left"], depth_image),
-                                                         fetch_depth(body_part["Shoulder_right"], depth_image))    
+                                                         fetch_depth(body_part["Shoulder_right"], depth_image)) 
     
 #    hip_width_px = polyline_length([
 #        body_part["Hip_left"],
 #        body_part["Hip_right"]])
+
+    #hip_left_depth_point = point_toward(body_part["Hip_left"], body_part["Center"])
+    #hip_right_depth_point = point_toward(body_part["Hip_right"], body_part["Center"])
     
     hip_width = coordinate_to_distance_translate(body_part["Hip_left"],
                                                          body_part["Hip_right"],
                                                          fetch_depth(body_part["Hip_left"], depth_image),
-                                                         fetch_depth(body_part["Hip_right"], depth_image))    
+                                                         fetch_depth(body_part["Hip_right"], depth_image))  
     
     #print(f"Pig Length in pixels: {pig_length_px}")
     #print(f"Pig Shoulder width in pixels: {shoulder_width_px}")
@@ -872,17 +880,17 @@ def coordinate_to_distance_translate(coord1:tuple[float, float], coord2:tuple[fl
         float: Real-world length in mm.
     """
 
-    # Camera Intrinsics that I have stolen from the pointcloud generating script, will be replaced when actual intrinsics are acquired
-    fx=600
-    fy=600
-    cx=320
-    cy=240
+    # Camera Intrinsics acquired from the calibration process for the D555 RealSense camera.
+    fx=650.99327804
+    fy=650.7463792
+    cx=648.04404825
+    cy=352.02024743
 
     # Using to quickly debug since I am getting issues with irregular depth readings on the shoulders, so if they
     # Have too great of a difference, just set them equal to each other to negate the difference in height from shoulders
     # REMOVE LATER ONCE DEPTH READING/CAPTURE IS WORKING BETTER
-    if depth_value1 - depth_value2 > 50: # Use a 5 cm tolerance range
-        depth_value1 = depth_value2
+    #if depth_value1 - depth_value2 > 50: # Use a 5 cm tolerance range
+    #    depth_value1 = depth_value2
 
     # Calculate the real-world coordinates for both points
     x1 = (int) ((coord1[0] - cx) * depth_value1 / fx)
@@ -897,6 +905,37 @@ def coordinate_to_distance_translate(coord1:tuple[float, float], coord2:tuple[fl
     distance = np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (int(depth_value2) - int(depth_value1))**2)
     print(distance) # DEBUG
     print("-------------------------------------------------------") #DEBUG
-    distance = distance * 0.7 # Shrinking the distance down by a bit, as it seems to be overshooting length and width by a bit
+    #distance = distance * 0.7 # Shrinking the distance down by a bit, as it seems to be overshooting length and width by a bit
 
     return distance / 10 # Converts from mm back into cm to stay in line with the rest of the program
+
+def point_toward(p1, p2, distance=25):
+    """
+    Returns the point `distance` pixels from p1 toward p2.
+
+    Args:
+        p1: (x1, y1) starting point (Usually shoulders or hips)
+        p2: (x2, y2) target point (Usually center of the pig)
+        distance: Distance in pixels to move toward p2 (default: 15)
+
+    Returns:
+        (x, y) tuple representing the new point.
+
+    If p1 and p2 are the same point, p1 is returned.
+    """
+    x1, y1 = p1
+    x2, y2 = p2
+
+    dx = x2 - x1
+    dy = y2 - y1
+    length = np.hypot(dx, dy)
+
+    if length == 0:
+        return p1
+
+    scale = distance / length
+
+    return (
+        x1 + dx * scale,
+        y1 + dy * scale,
+    )

@@ -81,8 +81,8 @@ def chain_prediction(uploaded_rgb_files, uploaded_depth_files, models_to_chain, 
 
                     instance["depth_image"] = depth_b64
                     instance["depth_format"] = "raw"
-                    instance["depth_height"]=480
-                    instance["depth_width"]=640
+                    instance["depth_height"]=720
+                    instance["depth_width"]=1280
 
 
                 instances.append(instance)
