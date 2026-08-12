@@ -2,13 +2,21 @@ System Measurements from a global origin of ↔x ↕y and ↨z starting from cor
 
 All provided measurements are in inches
 
+Pen #6
+
 Center of Water Nipple Output - 7 1/2", 9", 25 1/2"
 Total Center of RFID Panel Reader - 15 3/4", 0", 20 3/8"
-Top Realsense Camera Center - 20", 5 1/2", 55"
-Side Angle Realsense Camera Center - 20 1/4", 30", 44"
+Realsense Camera Center - 20", 5 1/2", 57.5"
 Thermal Camera Location - 36", 14", 90 1/2"
 
 Dimensions of a Single Pig Pen
 7' 10 3/4" x 17' 9 3/8"
 Size of a FIRE System
 27 1/4" x 66 1/4"
+
+Pen #3
+
+Realsense Camera Center - 16 1/2", 12", 57.5" 
+System Box 26 1/4", 0", 79"
+
+STILL NEED TO GET OTHER MEASUREMENTS
