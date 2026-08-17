@@ -6,12 +6,12 @@ Pen #6
 
 Center of Water Nipple Output - 7 1/2", 9", 25 1/2"
 Total Center of RFID Panel Reader - 15 3/4", 0", 20 3/8"
-Realsense Camera Center - 20", 5 1/2", 57.5"
+Realsense Camera Center - 20", 5 1/2", 65"
 Thermal Camera Location - 36", 14", 90 1/2"
 
 Pen #3
 
-Realsense Camera Center - 16 1/2", 12", 57.5" 
+Realsense Camera Center - 16 1/2", 12", 65" 
 System Box 26 1/4", 0", 79"
 Center of Water Nipple Output - 7", 23", 17"
 Edges of RFID Panel Reader - 6.5", 0", 7.5"
