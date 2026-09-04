@@ -1,0 +1,26 @@
+After setting up a Conda environment to perform DVC in or switching to one where you intend to work on DVC you can install DVC with:
+pip install dvc
+
+A remote refers to a storage system for the data. (In our case it will likely either be a local file directory or the GPSC)
+
+Add a remote: dvc remote add -d (makes default) <name> <path to another file, ssh, or other source for remote storage of hashed files>
+
+Add a data source from outside the project: dvc import-url <flags*> <url or path to external directory>
+* --no-download is a good flag to use as it prevents downloading the entire dataset immediately if it is a large dataset that you are working with
+** This is separate from a remote, and this information about the data will be stored in the remote
+
+Upload dataset or changes to dataset: dvc push
+* This should be followed by a fresh git commit+ add whenever this happens to track the changes that were made to the dataset
+
+Retrieve changes to the dataset from a local remote: dvc pull <file*>
+* The file is an optional tag if you only want to pull the data for a specific dataset from its respective .dvc file
+
+Retrieve changes to a dataset from a non-local remote: dvc update <file>
+* This one is required if the dataset isn't being stored inside of the repo, which is true for our case
+
+Remove a remote: dvc remote remove <name> 
+
+
+Command to link DVC to the GPSC storage (Replace user and filepath after the automated_sorting bit to what you would like):
+dvc import-url --no-download ssh://jat009@inter-aafc-lp.science.gc.ca/home/jat009/quick_access/J-003914_automated_sorting/data/raw/Thermal/2026-04
+
